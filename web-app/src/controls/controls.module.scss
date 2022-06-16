@@ -191,5 +191,38 @@ div.slider-container {
 
 
 img.tooltip-icon {
-    color: red;
+    cursor: pointer;
 }
+
+div.tooltip {
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: black;
+    font-size: 1.5rem;
+    color: white;
+    opacity: 0.75;
+    font-weight: bold;
+}
+
+div.arrow {
+    visibility: hidden;
+
+    &, &::before {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background-color: black;
+    }
+
+    &::before {
+        content: "";
+        visibility: visible;
+        transform: rotate(45deg);
+    }
+
+    &.top { top: -4px; }
+    &.bottom { bottom: -4px; }
+    &.left { left: -4px; }
+    &.right { right: -4px; }
+}
+

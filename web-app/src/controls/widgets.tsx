@@ -1,9 +1,11 @@
 import { FunctionComponent, JSX } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { Tooltip } from "../popper";
-import { Overlay } from "../popper";
+import { forwardRef } from "preact/compat"
+import { Overlay } from "@restart/ui"
+import { UsePopperState } from "@restart/ui/usePopper"
 import { classNames, makeId } from "../utils";
 import styles from "./controls.module.scss";
+import _default from "@popperjs/core/lib/modifiers/popperOffsets";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -128,13 +130,27 @@ export const Slider: FunctionComponent<{
     )
 }
 
-export const TooltipIcon: FunctionComponent<{ tooltip: string, src: string }> = ({ src, tooltip }) => {
-    const ref = useRef<HTMLImageElement>(null!);
+const Tooltip = forwardRef(
+    ({ children, popper, show: _default, ...props }: any, ref: any) => (
+        <div ref={ref} {...props}>
+            <div class={styles.tooltip} >{ children }</div>
+        </div>
+    )
+);
+
+export const TooltipIcon: FunctionComponent<{ 
+    tooltip: string, 
+    src: string,
+    onClick?: JSX.MouseEventHandler<HTMLElement>
+}> = ({ src, tooltip, onClick }) => {
+    const ref = useRef<HTMLImageElement>(null);
+    const popperRef = useRef<UsePopperState>();
     const [show, setShow] = useState(false);
 
     return (
         <>
             <img 
+                onClick={onClick}
                 ref={ref} 
                 class={styles['tooltip-icon']} 
                 src={src}
@@ -146,15 +162,18 @@ export const TooltipIcon: FunctionComponent<{ tooltip: string, src: string }> = 
                 target={ref}
                 placement="left"
                 offset={[0, 8]}
+                containerPadding={10}
             >
-                {(popper, arrowProps) => (
-                    <Tooltip
-                        arrowProps={arrowProps}
-                        popper={popper}    
+                {(props, {popper}) => {
+                    if (popper) popperRef.current = popper;
+
+                    return (<Tooltip
+                        {...(props as any)}
+                        popper={popper}
                     >
                         { tooltip }
-                    </Tooltip>
-                )}
+                    </Tooltip>) as any;
+                }}
             </Overlay>
         </>
     );

@@ -124,7 +124,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     const animationHandler = () => {
         if (!animating) setAnimating(true);
     }
-    
+
     
     return (
         <div class={styles['generate-grid']}>
@@ -150,9 +150,9 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                 <div class={styles['controls-container']}>
                     <PasswordSettings data={config} onChange={setConfig}/>
                     <div class={styles['action-sidebar']}>
-                        <TooltipIcon tooltip="Copy to clipboard" src={copyIcon} />
-                        <TooltipIcon tooltip="Generate Mnemonic" src={updateIcon} />
-                        <TooltipIcon tooltip="Print Mnemonic phrase" src={printerIcon} />
+                        <TooltipIcon tooltip="Copy Password" src={copyIcon} />
+                        <TooltipIcon tooltip="Generate Phrase" src={updateIcon} />
+                        <TooltipIcon tooltip="Print Mnemonic" src={printerIcon} />
                     </div>
                 </div>
             </div>
