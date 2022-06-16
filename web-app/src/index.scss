@@ -1,0 +1,42 @@
+html,
+body {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background-color: #fafafa;
+  // background-color: #444;
+  font-family: 'Helvetica Neue', arial, sans-serif;
+  color: #444;
+  user-select: none;
+  font-size: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  padding: 0;
+  margin: .7rem 0;
+}
+
+p {
+  margin: 0.5rem 0;
+}
+
+div, span, button {
+  padding: 0;
+  margin: 0;
+}
+
+#app {
+  height: 100%;
+  padding: 1.5rem;
+
+  font-size: 1.5em;
+  display: flex;
+  flex-direction: column;
+  // overflow: hidden;
+  // padding-top: 100px;
+}

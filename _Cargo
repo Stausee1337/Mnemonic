@@ -1,0 +1,13 @@
+[package]
+name = "mnemonic"
+version = "0.1.0"
+edition = "2021"
+authors = ["Simon Koenig"]
+
+[dependencies.wry]
+version = "0.18"
+
+[dependencies]
+rand = "0.8.4"
+serde = "1.0.137"
+serde_json = "1.0.81"

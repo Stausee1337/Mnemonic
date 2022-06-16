@@ -1,0 +1,195 @@
+@import '../var';
+
+.space-filler {
+    width: 100%;
+    height: 100%;
+}
+
+.h-center {
+    display: flex;
+    align-items: center;
+    flex-direction: column
+}
+
+.center {
+    @extend .space-filler;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.button {
+    height: 5rem;
+    padding: 0 2rem;
+    border: none;
+    background-color: $prime;
+    font-size: 2rem;
+    cursor: pointer;
+    color: white;
+    font-weight: 600;
+    transition: 100ms ease-in-out background;
+
+    &:hover {
+        background-color: darken($prime, 5%);
+    }
+}
+
+.box {
+    padding: 0.5rem;
+    margin: 1rem;
+    border: 1.2pt solid $gray;
+    border-radius: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    // overflow: scroll;
+}
+
+.columns {
+    @extend .space-filler;
+    display: flex;
+    flex-direction: row;
+
+    div:not(:last-child) {
+        border-right: 1.2pt solid $gray;
+    }
+    
+    div {
+
+        padding: 0 0.5rem;
+    }
+}
+
+.expandable-container {
+    div:not(.expanded) {
+        display: none;
+    }
+
+    span {
+        padding: 1rem 0;
+        color: #808080;
+        text-transform: uppercase;
+        font-weight: 550;
+        cursor: pointer;
+    }
+}
+
+blockquote {
+    border-left: 2pt solid $gray;
+    margin: 1rem 0;
+    padding: 0.5rem 10px;
+}
+
+label.toggle {
+    display: inline-block;
+    font-size: 1.8rem;
+    color: black;
+    padding: 0 0 0 5rem;
+    margin: 0 0 1rem 0;
+    position: relative;
+    height: 2.2rem;
+    line-height: 2.2rem;
+    cursor: pointer;
+
+    input {
+        display: none;
+    }
+
+    input:checked + span.switch {
+        background-color: $prime;
+    }
+
+    input:disabled + span.switch {
+        background-color: $gray;
+    }
+
+    span.switch  {
+        height: 2.2rem;
+        width: 4rem;
+        display: block;
+        position: absolute;
+        background-color: $red;
+        border-radius: 3.4rem;
+        top: 0;
+        left: 0;
+        transition: background 300ms;
+    }
+
+    input:checked + span.switch::before,
+    input:disabled + span.switch::before {
+        transform: translateX(1.7rem);
+    }
+
+    span.switch::before {
+        content: "";
+        position: absolute;
+        height: 1.4rem;
+        width: 1.4rem;
+        background-color: white;
+        border-radius: 100%;
+        top: calc((2.2rem/2) - (1.4rem/2));
+        left: 0.5rem;
+
+        transition: all 300ms;
+    }
+}
+
+div.slider-container {
+    height: 5rem;
+    width: 24rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+
+    span.background {
+        left: 2rem;
+        width: calc(100% - 4rem);
+        height: .7rem;
+        background-color: #dbdbdb;
+        border-radius: 2rem;
+        position: relative;
+        overflow: hidden;
+        
+        span.slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            border-radius: 2rem;
+            background-color: $red;
+        }
+        z-index: 1;
+    }
+    span.padding-contanier {
+        position: absolute;
+        top: 50%;
+        left: 2rem;
+        width: calc(100% - 4rem);;
+        height: 4.7rem;
+        box-sizing: content-box;
+        // background-color: rgba(128, 0, 128, 0.5);
+        transform: translateY(-50%);
+        z-index: 5;
+    }
+
+    span.handle {
+        position: absolute;
+        height: 4rem;
+        width: 4rem;
+        top: calc(50% - 2rem);
+        border-radius: 100%;
+        background-color: $red;
+        box-shadow: 0 0 1rem rgba(0, 0, 0, 0.3);
+        z-index: 10;
+    }
+
+    cursor: pointer;
+}
+
+
+img.tooltip-icon {
+    color: red;
+}

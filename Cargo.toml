@@ -1,0 +1,31 @@
+[package]
+name = "mnemonic"
+version = "0.1.0"
+edition = "2021"
+authors = ["Simon Koenig"]
+build = "build.rs"
+
+[dependencies]
+tauri-runtime = "0.6.0"
+tauri-runtime-wry = "0.6.0"
+tauri-utils = "1.0.0-rc.8"
+url = "2.2.2"
+serde = "1.0.137"
+serde_json = { version = "1.0.81", features = [ "raw_value" ] }
+wry = "0.17.0"
+serialize-to-javascript = "0.1.1"
+lazy_static = "1.4.0"
+
+[dependencies.pyo3]
+version = "0.16.5"
+features = ["auto-initialize"]
+
+[dependencies.windows]
+version = "0.37.0"
+features = [
+    "Win32_UI_WindowsAndMessaging"
+]
+
+[build-dependencies]
+winres = "0.1.12"
+
