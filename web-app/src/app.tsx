@@ -1,5 +1,6 @@
 import { GeneratePage } from './components/generate'
 import { Header, Columns, SpaceFiller, Button, HCenter, Switch, Case, useNavigation } from './controls'
+import { NotificationProvider } from './notification';
 import { ConfigData } from './types';
 const demoWords = [
     'anaphase', 'floods', 'hoofing', 'signalised', 'fosses', 'chariest',
@@ -96,7 +97,7 @@ export function App() {
     };
     
     return (
-        <>
+        <NotificationProvider>
             <Header>Mnemonic</Header>
             <Switch>
                 <Case id="start-page" index>
@@ -106,6 +107,6 @@ export function App() {
                     <GeneratePage config={config}/>
                 </Case>
             </Switch>
-        </>
+        </NotificationProvider>
     )
 }
