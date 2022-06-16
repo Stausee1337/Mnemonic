@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.5",
+    "@restart/ui": "^1.2.0",
     "preact": "^10.5.15"
   },
   "devDependencies": {
