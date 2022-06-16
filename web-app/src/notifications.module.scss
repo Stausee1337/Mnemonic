@@ -26,6 +26,18 @@ div.notification {
     position: relative;
     box-shadow: 0 0 1rem rgba(0, 0, 0, 0.30);
 
+    span.close-button {
+        position: absolute;
+        width: 2rem;
+        height: 2rem;
+        top: 0;
+        right: 0;
+        color: white;
+        background-image: url('./icons/close.svg');
+        background-repeat: no-repeat;
+        cursor: pointer;
+    }
+
     &::after {
         content: "";
         position: absolute;
@@ -42,14 +54,24 @@ div.notification {
     h1 {
         color: white;
         margin-top: 1rem;
-        margin-bottom: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    article {
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        white-space: pre-wrap;
     }
 
     &.error { background-color: $red; }
     &.error::after { background-color: darken($red, 15%); }
 
-    &.info { background-color: $green; }
-    &.info::after { background-color: darken($green, 15%); }
+    &.info { background-color: $prime; }
+    &.info::after { background-color: darken($prime, 15%); }
+
+    &.success { background-color: $green; }
+    &.success::after { background-color: darken($green, 15%); }
 }
 
 @keyframes pop-in {

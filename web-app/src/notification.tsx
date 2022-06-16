@@ -10,10 +10,11 @@ interface NotificationContextObject {
 
     push(n: NotificationObject): void;
     remove(self: NotificationObject): boolean;
+    fadeOut(self: NotificationObject): void;
 }
 
 interface NotificationObject {
-    class: 'error' | 'info',
+    class: 'error' | 'success' | 'info',
     closeButton: boolean,
     // controls: {},
     title: string,
@@ -36,6 +37,7 @@ const NotificationArea: FunctionComponent = ({ }) => {
                 return (
                 <div key={config._id!} onAnimationEnd={endTrigger} class={`${styles.notification} ${styles[config.class]} ${styles[fadeOut!]}`}>
                     <h1>{ config.title }</h1>
+                    { config.closeButton ? <span onClick={() => notifications.fadeOut(config)} class={styles['close-button']} /> : null }
                     { config.content ? <article children={config.content} /> : null }
                 </div>);
             }) }
@@ -68,10 +70,7 @@ export const NotificationProvider: FunctionComponent = ({ children }) => {
             eventId: 0,
             push(n) {
                 if (!n.closeButton) {
-                    setTimeout(() => {
-                        n._removing = true;
-                        if (res.notifyChanges) res.notifyChanges();;
-                    }, 5000);
+                    setTimeout(() => res.fadeOut(n), 5000);
                 }
                 n._id = `${Date.now()}`;
                 res.activeNaviations.push(n);
@@ -86,6 +85,10 @@ export const NotificationProvider: FunctionComponent = ({ children }) => {
                     return true;
                 }
                 return false;
+            },
+            fadeOut(self) {
+                self._removing = true;
+                if (res.notifyChanges) res.notifyChanges();
             }
         };
 
