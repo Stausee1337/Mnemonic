@@ -64,19 +64,57 @@ const PasswordSettings: FunctionComponent<{
     )
 }
 
+function openPrinter(content: string) {
+    const hiddenContainer = document.createElement('div');
+    hiddenContainer.style.display = 'none';
+    document.body.appendChild(hiddenContainer);
+
+    const frame = document.createElement('iframe');
+    hiddenContainer.appendChild(frame);
+
+    const printWindow = frame.contentWindow;
+    if (printWindow === null)
+        throw Error("Can't open printer");
+    
+    printWindow.document.write(
+        '<code>',
+        content,
+        '</code>'
+    );
+
+    printWindow.print();
+
+    hiddenContainer.remove();
+}
+
 const ActionSidebar: FunctionComponent<{
     onCopy?: () => Promise<void>,
     onRegen?: () => Promise<void>,
-    onPrint?: () => Promise<void>
+    onPrint?: () => string
 }> = ({ onCopy, onRegen, onPrint }) => {
     const notfiy = useNotifier();
 
     const printHandler = () => {
-        notfiy({
+        if (!onPrint) return;
+        const close = notfiy({
             class: 'info',
             closeButton: false,
-            title: 'Unimplemented',
-            content: 'Print handler gets to be implemented in the future'
+            title: 'Preparing to print ...',
+            content: 'Generating print document'
+        });
+        setTimeout(() => {
+            try {
+                openPrinter(onPrint());
+            } catch (e: any) {
+                close();
+                notfiy({
+                    class: 'error',
+                    closeButton: true,
+                    title: 'Error opening printer',
+                    content: e.toString()
+                });
+            }
+            close();
         })
     }
 
@@ -279,6 +317,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                     <ActionSidebar
                         onCopy={() => navigator.clipboard.writeText(password)} 
                         onRegen={updatePhrase}
+                        onPrint={() => wordlist.join(' - ')}
                     />
                 </div>
             </div>
