@@ -58,6 +58,154 @@ const PasswordSettings: FunctionComponent<{
     )
 }
 
+const ActionSidebar: FunctionComponent<{
+    onCopy?: () => Promise<void>,
+    onRegen?: () => Promise<void>,
+    onPrint?: () => Promise<void>
+}> = ({ onCopy, onRegen, onPrint }) => {
+    const notfiy = useNotifier();
+
+    const printHandler = () => {
+        notfiy({
+            class: 'info',
+            closeButton: false,
+            title: 'Unimplemented',
+            content: 'Print handler gets to be implemented in the future'
+        })
+    }
+
+    const updateHandler = () => {
+        if (!onRegen) return;
+        onRegen();
+    }
+
+    const copyHandler = () => {
+        if (!onCopy) return;
+        onCopy()
+            .then(() => notfiy({
+                class: 'success',
+                closeButton: false, 
+                title: 'Copied successfully!'
+            }))
+            .catch(e => notfiy({
+                class: 'error',
+                closeButton: true,
+                title: 'Clipboard error',
+                content: e.toString()
+            }));
+    }
+
+    return (
+        <div class={styles['action-sidebar']}>
+            <TooltipButton onClick={copyHandler} tooltip="Copy Password">
+                <img src={copyIcon}/>
+            </TooltipButton>
+            <TooltipButton onClick={updateHandler} tooltip="Generate Phrase">
+                <img src={updateIcon}/>
+            </TooltipButton>
+            <TooltipButton onClick={printHandler} tooltip="Print Mnemonic">
+                <img src={printerIcon}/>
+            </TooltipButton>
+        </div>
+    );
+}
+
+const POOL_SIZE_MAPPING: { [key: string]: number } = ({
+    characters: 52,
+    digits: 9,
+    punctuation: 22,
+    special: 14,
+}) as any;
+
+function calculatePasswordEntropy(config: PasswordForm) {
+    let poolSize = Object.entries(config).filter(([key, value]) => value && key !== 'length').map(([key, _]) => key)
+        .map(name => POOL_SIZE_MAPPING[name]).reduce((prev, curr) => prev + curr);
+    return config.length * Math.log2(poolSize);
+}
+
+const colorMapping = {
+    1: '#008035',
+    0.75: '#30bf30',
+    0.5: '#ffd500',
+    0.25: '#ff2a00',
+    0: ''
+}
+
+const IntelligentPasswordBox: FunctionComponent<{
+    password: string | null,
+    entropy: number
+}> = ({ password, entropy }) => {
+    const [fontSize, setSize] = useState(3);
+    const [fadeR, setFadeR] = useState(false);
+    const [fadeL, setFadeL] = useState(false);
+    const [scale, setScale] = useState<0 | 0.25 | 0.5 | 0.75 | 1>(null!);
+    const pwdContent = useRef<HTMLSpanElement>(null!);
+
+    useEffect(() => {
+        if (!password) return;
+        checkScroll();
+
+        if (password.length < 44 || password.length > 50) return;
+        const ratio = 1 - ((password.length - 40) / 10);
+        setSize((ratio * 0.5) + 2.5);
+    }, [password]);
+
+    useEffect(() => {
+        // very good 210
+        // good 158
+        // medium 100
+        // bad 50
+
+        if (entropy >= 210)
+            setScale(1)
+        else if (entropy >= 158)
+            setScale(0.75)
+        else if (entropy >= 100)
+            setScale(0.5)
+        else if (entropy >= 50)
+            setScale(0.25)
+        else
+            setScale(0)
+    }, [entropy])
+
+    const checkScroll = () => {
+        const element = pwdContent.current;
+        if (element.scrollWidth > element.offsetWidth) {
+            let value = true;
+            if (element.scrollWidth - element.scrollLeft === 730) {
+                value = false;
+            }
+            setFadeR(value);
+        } else {
+            setFadeR(false);
+        }
+
+        setFadeL(element.scrollLeft > 0);
+    }
+
+    return (
+        <div 
+            id="pwdbox" 
+            class={classNames({ 
+                [styles['password-box']]: true, 
+                [styles['fade-r']]: fadeR, 
+                [styles['fade-l']]: fadeL 
+            })}>
+            <span class={styles.label}>Password:</span>
+            <span 
+                class={styles.content} 
+                onScroll={() => checkScroll()} 
+                style={{ fontSize: `${fontSize}rem` }} 
+                ref={pwdContent}>
+                { password ? password : null }
+            </span>
+            <span 
+                style={{ transform: `scaleX(${scale})`, backgroundColor: colorMapping[scale] }} 
+                class={styles['strength-indicator']}/>
+        </div>
+    );
+}
+
 export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     config: initialConfig 
 }) => {
@@ -65,12 +213,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     const [wordlist, setWordlist] = useState<string[]>(null!);
     const [password, setPassword] = useState<string>(null!);
     const [config, setConfig] = useState(initialConfig);
-    const [fontSize, setSize] = useState(3);
-    const [fadeR, setFadeR] = useState(false);
-    const [fadeL, setFadeL] = useState(false);
     const [animating, setAnimating] = useState(false);
-    const [updating, setUpdating] = useState(false);
-    const pwdContent = useRef<HTMLSpanElement>(null!);
 
     const notfiy = useNotifier();
 
@@ -97,70 +240,21 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     }, [config]);
 
     useEffect(() => {
-        checkScroll();
-
-        if (password.length < 44 || password.length > 50) return;
-        const ratio = 1 - ((password.length - 40) / 10);
-        setSize((ratio * 0.5) + 2.5);
-    }, [password]);
-
-    useEffect(() => {
         if (animating) {
             setTimeout(() => setAnimating(false), 800);
         }
     }, [animating])
 
-    const checkScroll = () => {
-        const element = pwdContent.current;
-        if (element.scrollWidth > element.offsetWidth) {
-            let value = true;
-            if (element.scrollWidth - element.scrollLeft === 730) {
-                value = false;
-            }
-            setFadeR(value);
-        } else {
-            setFadeR(false);
-        }
-
-        setFadeL(element.scrollLeft > 0);
-    }
-
     const animationHandler = () => {
         if (!animating) setAnimating(true);
     }
 
-    const printHandler = () => {
-        notfiy({
-            class: 'info',
-            closeButton: false,
-            title: 'Unimplemented',
-            content: 'Print handler gets to be implemented in the future'
-        })
-    }
-
-    const updateHandler = () => {
-        Rust.generateMnemonicPhrase(config).then(data => {
-            setWordlist(data.phrase);
-            setPassword(data.password);
-        }).catch(console.error);
-    }
-
-    const copyHandler = () => {
-        console.log('executed')
-        navigator.clipboard.writeText(password)
-            .then(() => notfiy({
-                class: 'success',
-                closeButton: false, 
-                title: 'Copied successfully!'
-            }))
-            .catch(e => notfiy({
-                class: 'error',
-                closeButton: true,
-                title: 'Clipboard error',
-                content: e.toString()
-            }));
-    }
+    const updatePhrase = () => Rust.generateMnemonicPhrase(config).then(config => {
+        setWordlist(config.phrase);
+        setPassword(config.password);
+    })
     
+
     return (
         <div class={styles['generate-grid']}>
             <div 
@@ -172,31 +266,16 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                 { wordlist ?  wordlist.map((w, i) => <Word key={`${w}-${i}`}>{w}</Word>) 
                     .reduce((prev, cur) => <>{prev} <Spacer/> {cur}</>) : null }
             </div>
-            <div 
-                id="pwdbox" 
-                class={classNames({ 
-                    [styles['password-box']]: true, 
-                    [styles['fade-r']]: fadeR, 
-                    [styles['fade-l']]: fadeL 
-                })}>
-                <span onScroll={() => checkScroll()} style={{ fontSize: `${fontSize}rem` }} ref={pwdContent}>{ password ? password : null }</span>
-            </div>
+            <IntelligentPasswordBox password={password} entropy={calculatePasswordEntropy(config)}/>
             <div>
                 <div class={styles['controls-container']}>
                     <PasswordSettings data={config} onChange={setConfig}/>
-                    <div class={styles['action-sidebar']}>
-                        <TooltipButton onClick={copyHandler} tooltip="Copy Password">
-                            <img src={copyIcon}/>
-                        </TooltipButton>
-                        <TooltipButton onClick={updateHandler} tooltip="Generate Phrase">
-                            <img class={classNames({ [styles['rotate-animation']]: updating })} src={updateIcon}/>
-                        </TooltipButton>
-                        <TooltipButton onClick={printHandler} tooltip="Print Mnemonic">
-                            <img src={printerIcon}/>
-                        </TooltipButton>
-                    </div>
+                    <ActionSidebar
+                        onCopy={() => navigator.clipboard.writeText(password)} 
+                        onRegen={updatePhrase}
+                    />
                 </div>
             </div>
         </div>
     );
-}
+};

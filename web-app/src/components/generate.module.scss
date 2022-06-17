@@ -78,12 +78,34 @@ div.password-box {
     background-color: white;
     margin: 1rem 0;
     padding: 0 2rem;
-    font-family: monospace;
     box-shadow: 0 0.75rem 0 rgba(0, 0, 0, 0.1);
     position: relative;
     display: flex;
 
-    span {
+    span.label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin: 0.5rem;
+        z-index: 9;
+    }
+
+    span.strength-indicator {
+        position: absolute;
+        display: block;
+        left: 0;
+        bottom: 0;
+        height: 1rem;
+        width: 100%;
+        z-index: 10;
+        transition: all 250ms ease-out;
+        transform-origin: left top;
+    }
+
+    span.content {
+        font-family: monospace;
         align-self: center;
         width: 100%;
         user-select: text;
@@ -106,6 +128,7 @@ div.password-box {
         width: 5rem;
         background: linear-gradient(to left, #fff 45%, transparent);
         pointer-events: none;
+        z-index: 2;
     }
 
     &.fade-r::before {
@@ -120,6 +143,7 @@ div.password-box {
         width: 5rem;
         background: linear-gradient(to right, #fff 45%, transparent);
         pointer-events: none;
+        z-index: 3;
     }
 
     &.fade-l::after {

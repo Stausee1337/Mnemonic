@@ -92,7 +92,7 @@ export function App() {
         characters: true,
         digits: true,
         punctuation: true,
-        special: true,
+        special: false,
         length: 48
     };
     
