@@ -138,24 +138,23 @@ const Tooltip = forwardRef(
     )
 );
 
-export const TooltipIcon: FunctionComponent<{ 
-    tooltip: string, 
-    src: string,
+export const TooltipButton: FunctionComponent<{ 
+    tooltip: string,
     onClick?: JSX.MouseEventHandler<HTMLElement>
-}> = ({ src, tooltip, onClick }) => {
-    const ref = useRef<HTMLImageElement>(null);
+}> = ({ children, tooltip, onClick }) => {
+    const ref = useRef<HTMLButtonElement>(null);
     const popperRef = useRef<UsePopperState>();
     const [show, setShow] = useState(false);
 
     return (
         <>
-            <img 
+            <button 
                 onClick={onClick}
                 ref={ref} 
-                class={styles['tooltip-icon']} 
-                src={src}
+                class={styles['tooltip-button']} 
                 onMouseEnter={() => setShow(true)}
                 onMouseLeave={() => setShow(false)}
+                children={children}
             />
             <Overlay
                 show={show}

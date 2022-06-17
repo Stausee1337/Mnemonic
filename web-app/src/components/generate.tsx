@@ -1,12 +1,13 @@
 import { FunctionComponent, JSX } from "preact";
-import { Button, Columns, Center, SpaceFiller, HCenter, ToggleSwitch, Slider, TooltipIcon } from "../controls"
+import { ToggleSwitch, Slider, TooltipButton } from "../controls"
 import styles from "./generate.module.scss"
 import { random, classNames } from "../utils"
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { Rust } from "../interface"
 import copyIcon from "../icons/copy.svg"
 import updateIcon from "../icons/update.svg"
 import printerIcon from "../icons/printer.svg"
+import { useNotifier } from "../notification";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
@@ -68,14 +69,24 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     const [fadeR, setFadeR] = useState(false);
     const [fadeL, setFadeL] = useState(false);
     const [animating, setAnimating] = useState(false);
+    const [updating, setUpdating] = useState(false);
     const pwdContent = useRef<HTMLSpanElement>(null!);
+
+    const notfiy = useNotifier();
 
     useEffect(() => {
         Rust.generateMnemonicPhrase(initialConfig).then(data => {
             setWordlist(data.phrase);
             setPassword(data.password);
             setInitialzed(true);
-        }).catch(console.error);
+        }).catch(e => notfiy({
+            class: 'error',
+            closeButton: true,
+            title: 'IPC command error',
+            content: `Error sending IPC request:
+            ${e}
+            `
+        }));
     }, []);
 
     useEffect(() => {
@@ -114,17 +125,41 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         setFadeL(element.scrollLeft > 0);
     }
 
-    const clickHandler = async () => {
+    const animationHandler = () => {
+        if (!animating) setAnimating(true);
+    }
+
+    const printHandler = () => {
+        notfiy({
+            class: 'info',
+            closeButton: false,
+            title: 'Unimplemented',
+            content: 'Print handler gets to be implemented in the future'
+        })
+    }
+
+    const updateHandler = () => {
         Rust.generateMnemonicPhrase(config).then(data => {
             setWordlist(data.phrase);
             setPassword(data.password);
         }).catch(console.error);
     }
 
-    const animationHandler = () => {
-        if (!animating) setAnimating(true);
+    const copyHandler = () => {
+        console.log('executed')
+        navigator.clipboard.writeText(password)
+            .then(() => notfiy({
+                class: 'success',
+                closeButton: false, 
+                title: 'Copied successfully!'
+            }))
+            .catch(e => notfiy({
+                class: 'error',
+                closeButton: true,
+                title: 'Clipboard error',
+                content: e.toString()
+            }));
     }
-
     
     return (
         <div class={styles['generate-grid']}>
@@ -150,9 +185,15 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                 <div class={styles['controls-container']}>
                     <PasswordSettings data={config} onChange={setConfig}/>
                     <div class={styles['action-sidebar']}>
-                        <TooltipIcon tooltip="Copy Password" src={copyIcon} />
-                        <TooltipIcon tooltip="Generate Phrase" src={updateIcon} />
-                        <TooltipIcon tooltip="Print Mnemonic" src={printerIcon} />
+                        <TooltipButton onClick={copyHandler} tooltip="Copy Password">
+                            <img src={copyIcon}/>
+                        </TooltipButton>
+                        <TooltipButton onClick={updateHandler} tooltip="Generate Phrase">
+                            <img class={classNames({ [styles['rotate-animation']]: updating })} src={updateIcon}/>
+                        </TooltipButton>
+                        <TooltipButton onClick={printHandler} tooltip="Print Mnemonic">
+                            <img src={printerIcon}/>
+                        </TooltipButton>
                     </div>
                 </div>
             </div>

@@ -190,8 +190,11 @@ div.slider-container {
 }
 
 
-img.tooltip-icon {
+button.tooltip-button {
     cursor: pointer;
+    width: 100%;
+    background: none;
+    border: none;
 }
 
 div.tooltip {
