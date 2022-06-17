@@ -1,6 +1,7 @@
 .src
 .vite
 
+dist
 helpers
 target
 
