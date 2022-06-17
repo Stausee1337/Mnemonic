@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use tauri_runtime_wry::{Wry};
 use tauri_runtime::{
-    Runtime, RunEvent, 
+    Runtime, RunEvent,
     window::{PendingWindow},
     webview::{WebviewAttributes}
 };
@@ -59,7 +59,7 @@ fn main() {
         "1"
     ).unwrap();
     pending.url = "http://localhost:3000".to_string();
-    pending.ipc_handler = Some(ipc::create_ipc_handler());
+    pending.ipc_handler = Some(ipc::create_ipc_handler(runtime.handle()));
     pending.webview_attributes.initialization_scripts.push(include_str!("../resources/init.js").to_string());
     let _detached = runtime.create_window(pending).unwrap();
     runtime.run(|event| match event {

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, value::RawValue};
 use serialize_to_javascript::Serialized;
 use tauri_runtime::{
-    window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch
+    window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch, Runtime
 };
 use tauri_runtime_wry::Wry;
 
@@ -28,6 +28,7 @@ pub struct IpcPayload {
 }
 
 type Window = DetachedWindow<EventLoopMessage, Wry<EventLoopMessage>>;
+type RHandle = <Wry<EventLoopMessage> as Runtime<EventLoopMessage>>::Handle;
 
 
 #[derive(Clone)]
@@ -146,8 +147,16 @@ fn invoke_handler(invoke: Invoke) {
     };
 }
 
-fn handle_invoke_payload(window: Window, payload: IpcPayload) {
+fn handle_invoke_payload(window: Window, payload: IpcPayload, _runtime_handle: &RHandle) {
     match payload.command.as_str() {
+        "testFn" => {
+            let resolver = InvokeResolver {
+                window,
+                callback: payload.callback,
+                error: payload.error
+            };
+            resolver.resolve(42);
+        }
         _ => {
             let message = InvokeMessage { 
                 window: window.clone(),
@@ -225,11 +234,13 @@ fn format_callback_result<T: Serialize, E: Serialize>(
     }
 }
 
-pub fn create_ipc_handler() -> WebviewIpcHandler<EventLoopMessage, Wry<EventLoopMessage>> {
+pub fn create_ipc_handler(
+    runtime_handle: RHandle
+) -> WebviewIpcHandler<EventLoopMessage, Wry<EventLoopMessage>> {
     Box::new(move |window, request| {
         match serde_json::from_str::<IpcPayload>(&request) {
             Ok(payload) => {
-                handle_invoke_payload(window, payload);
+                handle_invoke_payload(window, payload, &runtime_handle);
             },
             Err(e) => {
                 let msg = e.to_string();
