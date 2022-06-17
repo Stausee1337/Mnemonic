@@ -19,6 +19,7 @@ interface NotificationObject {
     // controls: {},
     title: string,
     content?: string,
+    stayOpen?: boolean;
     _removing?: boolean;
     _id?: string;
 }
@@ -45,10 +46,11 @@ const NotificationArea: FunctionComponent = ({ }) => {
     );
 }
 
-export function useNotifier(): (n: NotificationObject) => void {
+export function useNotifier(): (n: NotificationObject) => (() => void) {
     const ctx = useContext(NotificationContext);
     return (n) => {
         ctx.push(n);
+        return () => ctx.fadeOut(n); // close fn
     }
 }
 
@@ -69,7 +71,7 @@ export const NotificationProvider: FunctionComponent = ({ children }) => {
             activeNaviations: [],
             eventId: 0,
             push(n) {
-                if (!n.closeButton) {
+                if (!n.closeButton && !n.stayOpen) {
                     setTimeout(() => res.fadeOut(n), 5000);
                 }
                 n._id = `${Date.now()}`;
