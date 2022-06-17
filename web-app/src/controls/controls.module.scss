@@ -117,8 +117,7 @@ label.toggle {
         transition: background 300ms;
     }
 
-    input:checked + span.switch::before,
-    input:disabled + span.switch::before {
+    input:checked + span.switch::before {
         transform: translateX(1.7rem);
     }
 

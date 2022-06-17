@@ -42,16 +42,22 @@ const PasswordSettings: FunctionComponent<{
     useEffect(() => {
         onChange({
             characters, digits, punctuation, special, length
-        })
+        });
     }, [characters, digits, punctuation, special, length])
+
+    const arrayState = [characters, digits, punctuation, special];
+    let lod = [false, false, false, false];  // lastOneDisabled
+    if (arrayState.filter(s => s).length === 1) {
+        lod = arrayState;
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
             <h2>Password Settings</h2>
-            <ToggleSwitch checked={characters} onChanged={setCharacters}>Characters</ToggleSwitch>
-            <ToggleSwitch checked={digits} onChanged={setDigits}>Numbers</ToggleSwitch>
-            <ToggleSwitch checked={punctuation} onChanged={setPunctuation}>Punctuation</ToggleSwitch>
-            <ToggleSwitch checked={special} onChanged={setSpecial}>Special Punctuation</ToggleSwitch>
+            <ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}>Characters</ToggleSwitch>
+            <ToggleSwitch disabled={lod[1]} checked={digits} onChanged={setDigits}>Numbers</ToggleSwitch>
+            <ToggleSwitch disabled={lod[2]} checked={punctuation} onChanged={setPunctuation}>Punctuation</ToggleSwitch>
+            <ToggleSwitch disabled={lod[3]} checked={special} onChanged={setSpecial}>Special Punctuation</ToggleSwitch>
             <span class={styles['length-indicator']} >{length}</span>
             <Slider value={length} onChange={setLength} min={8} max={88}/>
         </div>
