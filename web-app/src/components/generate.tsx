@@ -1,5 +1,5 @@
 import { FunctionComponent, JSX } from "preact";
-import { ToggleSwitch, Slider, TooltipButton } from "../controls"
+import { ToggleSwitch, Slider, TooltipButton, Button } from "../controls"
 import styles from "./generate.module.scss"
 import { random, classNames } from "../utils"
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -300,27 +300,32 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     
 
     return (
-        <div class={styles['generate-grid']}>
-            <div 
-                onAnimationStart={animationHandler} 
-                className={classNames({ 
-                    [styles['word-container']]: true,
-                    [styles['animating']]: animating
-                })}>
-                { wordlist ?  wordlist.map((w, i) => <Word key={`${w}-${i}`}>{w}</Word>) 
-                    .reduce((prev, cur) => <>{prev} <Spacer/> {cur}</>) : null }
-            </div>
-            <IntelligentPasswordBox password={password} entropy={calculatePasswordEntropy(config)}/>
-            <div>
-                <div class={styles['controls-container']}>
-                    <PasswordSettings data={config} onChange={setConfig}/>
-                    <ActionSidebar
-                        onCopy={() => navigator.clipboard.writeText(password)} 
-                        onRegen={updatePhrase}
-                        onPrint={() => wordlist.join(' - ')}
-                    />
+        <>
+            <div class={styles['generate-grid']}>
+                <div 
+                    onAnimationStart={animationHandler} 
+                    className={classNames({ 
+                        [styles['word-container']]: true,
+                        [styles['animating']]: animating
+                    })}>
+                    { wordlist ?  wordlist.map((w, i) => <Word key={`${w}-${i}`}>{w}</Word>) 
+                        .reduce((prev, cur) => <>{prev} <Spacer/> {cur}</>) : null }
+                </div>
+                <IntelligentPasswordBox password={password} entropy={calculatePasswordEntropy(config)}/>
+                <div>
+                    <div class={styles['controls-container']}>
+                        <PasswordSettings data={config} onChange={setConfig}/>
+                        <ActionSidebar
+                            onCopy={() => navigator.clipboard.writeText(password)} 
+                            onRegen={updatePhrase}
+                            onPrint={() => wordlist.join(' - ')}
+                        />
+                    </div>
                 </div>
             </div>
-        </div>
+            <div>
+                <Button>Continue</Button>
+            </div>
+        </>
     );
 };

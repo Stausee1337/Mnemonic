@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, value::RawValue};
 use serialize_to_javascript::Serialized;
 use tauri_runtime::{
-    window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch, Runtime
+    window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch, Runtime, RuntimeHandle, EventLoopProxy
 };
 use tauri_runtime_wry::Wry;
 
@@ -147,15 +147,17 @@ fn invoke_handler(invoke: Invoke) {
     };
 }
 
-fn handle_invoke_payload(window: Window, payload: IpcPayload, _runtime_handle: &RHandle) {
+fn handle_invoke_payload(window: Window, payload: IpcPayload, runtime_handle: &RHandle) {
+    let event_proxy = runtime_handle.create_proxy();
     match payload.command.as_str() {
-        "testFn" => {
+        "setInitialized" => {  // Application Initialized
             let resolver = InvokeResolver {
                 window,
                 callback: payload.callback,
                 error: payload.error
             };
-            resolver.resolve(42);
+            let _ = event_proxy.send_event(EventLoopMessage::WebAppInit);
+            resolver.resolve(Value::Null);
         }
         _ => {
             let message = InvokeMessage { 

@@ -10,10 +10,10 @@ use tauri_runtime_wry::{Wry};
 use tauri_runtime::{
     Runtime, RunEvent,
     window::{PendingWindow},
-    webview::{WebviewAttributes}
+    webview::{WebviewAttributes}, Dispatch
 };
 
-use tauri_utils::config::{WindowUrl, WindowConfig,};
+use tauri_utils::{config::{WindowUrl, WindowConfig,}, Theme};
 use url::Url;
 
 use crate::events::EventLoopMessage;
@@ -32,7 +32,7 @@ fn create_window_config() -> WindowConfig {
         focus: true,
         transparent: false,
         maximized: false,
-        visible: true,
+        visible: false,
         decorations: true,
         always_on_top: false,
         skip_taskbar: false,
@@ -43,7 +43,7 @@ fn create_window_config() -> WindowConfig {
         min_height: None,
         max_width: None,
         max_height: None,
-        theme: None
+        theme: Some(Theme::Light)
     }
 }
 
@@ -62,10 +62,22 @@ fn main() {
     pending.ipc_handler = Some(ipc::create_ipc_handler(runtime.handle()));
     pending.webview_attributes.initialization_scripts.push(include_str!("../resources/init.js").to_string());
     let _detached = runtime.create_window(pending).unwrap();
-    runtime.run(|event| match event {
+
+    let mut initialized = false;
+    runtime.run(move |event| match event {
         RunEvent::Exit => {
             println!("Exit")
         },
+        RunEvent::UserEvent(tp) => {
+            match tp {
+                EventLoopMessage::WebAppInit => {
+                    if !initialized {
+                        let _ = _detached.dispatcher.show();
+                        initialized = true;
+                    }
+                }
+            }
+        }
         _ => ()
     });
 }
