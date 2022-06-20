@@ -1,4 +1,5 @@
 import { GeneratePage } from './components/generate'
+import { RestorePage } from './components/restore';
 import { Header, Columns, SpaceFiller, Button, HCenter, Switch, Case, useNavigation } from './controls'
 import { NotificationProvider } from './notification';
 import { ConfigData } from './types';
@@ -74,7 +75,7 @@ export function StartPage() {
                         Always skip to resotre page
                     </label>
                     <HCenter>
-                        <Button>Restore Password</Button>
+                        <Button onClick={() => navigate('restore')}>Restore Password</Button>
                     </HCenter>
                 </SpaceFiller>
             </Columns>
@@ -105,6 +106,9 @@ export function App() {
                 </Case>
                 <Case id="generate">
                     <GeneratePage config={config}/>
+                </Case>
+                <Case id="restore">
+                    <RestorePage/>
                 </Case>
             </Switch>
         </NotificationProvider>

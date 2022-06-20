@@ -1,0 +1,55 @@
+@import '../var';
+
+
+.grid-view {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+}
+
+.word-box {
+    display: flex;
+    // flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 0 3.5rem;
+
+    span.word {
+        height: 5rem;
+        padding: 0 2rem;
+        background-color: $prime;
+        color: white;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        display: inline-grid;
+
+        &::after {
+            content: attr(data-text) " ";
+            visibility: hidden;
+            white-space: pre-wrap;
+            font-family: 'Helvetica Neue', arial, sans-serif;
+            font-size: 2.5rem;
+            grid-area: 1/2;
+        }
+
+        input {
+            width: auto;
+            background: transparent;
+            border: none;
+            font-size: 2.5rem;
+            color: white;
+            padding: 0;
+            margin: 0;
+            font-family: 'Helvetica Neue', arial, sans-serif;
+            min-width: 12rem;
+            resize: none;
+            appearance: none;
+            grid-area: 1/2;
+
+            &:focus {
+                outline: none;
+            }
+        }
+    }
+}
