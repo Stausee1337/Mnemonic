@@ -7,7 +7,7 @@ use tauri_runtime::{
 };
 use tauri_runtime_wry::Wry;
 
-use crate::{events::EventLoopMessage, mnemonic};
+use crate::{events::EventLoopMessage, mnemonic, commands};
 
 // use crate::settings::{};
 
@@ -134,12 +134,15 @@ fn invoke_handler(invoke: Invoke) {
     match cmd {
         "testFn" => {
             invoke.resolver.resolve(1337);
-        },
+        }
         "generateMnemonicPhrase" => {
             mnemonic::generate_mnemonic_phrase(invoke);
         }
         "fromMnemonicPhrase" => {
             mnemonic::from_mnemonic_phrase(invoke);
+        }
+        "getWordlist" => {
+            commands::get_wordlist(invoke);
         }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));

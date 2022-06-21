@@ -4,4 +4,5 @@ namespace Rust {
     export async function generateMnemonicPhrase(config: ConfigData): Promise<PhraseData>;
     export async function fromMnemonicPhrase(pharse: string[], config: ConfigData): Promise<PhraseData>;
     export async function setInitialized(): Promise<void>;
+    export async function getWordlist(): Promise<string>;
 }
