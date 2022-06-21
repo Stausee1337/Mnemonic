@@ -1,36 +1,94 @@
+import usePopper from "@restart/ui/esm/usePopper";
 import { FunctionComponent } from "preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
 import styles from "./restore.module.scss";
 
-enum WordState {
-    Idle,
-    Inactive,
-    Active,
-    Correct,
-    Incorret
+type WordClassType = 'gray' | 'blue' | 'green' | 'red';
+
+function runValidators(word: string): boolean {
+    if (!word) return false;
+    return false;
 }
 
-const Word: FunctionComponent<{ active: boolean }> = ({
-    active
+const Word: FunctionComponent<{ 
+    index: number, 
+    selected: number,
+    onSelected: (newIndex: number) => void, 
+}> = ({ 
+    index, selected, onSelected
 }) => {
-    const [wordState, setState] = useState<WordState>(WordState.Idle);
+    const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
+    const [suggestionContainer, setSuggestionContainer] = useState<HTMLDivElement | null>(null);
+
+    const [active, setActive] = useState(false);
+    const [input, setInput] = useState<HTMLInputElement | null>(null);
+    const [value, setValue] = useState("");
+    const popper = usePopper(
+        wordContainer,
+        suggestionContainer,
+        {
+            placement: "bottom-start"
+        }
+    )
+
+    let validationClass = useMemo<WordClassType>(() => {
+        const isEmpty = value.length === 0;
+        if (active) {
+            return 'blue';
+        } else {
+            if (isEmpty && index > selected) return 'gray';
+            return runValidators(value) ? 'green' : 'red';
+        }
+    }, [active, value, selected])
 
     useEffect(() => {
-        if ([WordState.Correct, WordState.Incorret].includes(wordState))
-            return; // this states are immutable from outside
-        
-        setState(active ? WordState.Active : WordState.Inactive);
+        if (selected === index) {
+            setActive(true);
+        } else if (active) {
+            setActive(false);
+        }
+    }, [selected]);
+
+    useEffect(() => {
+        if (active) {
+            if (input === null) {
+                console.log('input element is null');
+                return;
+            }
+            input.focus();
+        }
     }, [active]);
 
-    console.log(WordState[wordState]);
+    useLayoutEffect(() => {
+        popper.forceUpdate();
+    }, [active && value.length])
 
+    
+    const inputHandler = () => {
+        if (input === null) return;
+        setValue(input.value);
+        input.parentElement!.dataset.text = input.value;
+    };
+
+    const suggestionActive = active && value.length > 0 ? styles['suggestion-active'] : ''
     return (
-        <span class={styles['word']}>
+        <span ref={setSpan} class={`${styles['word']} ${styles[validationClass ?? '']} ${suggestionActive}`}>
             <input 
-                onInput={e => e.currentTarget.parentElement!.dataset.text = e.currentTarget.value} 
+                onInput={inputHandler} 
                 size={1} type="text"
                 autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
-                autoFocus={wordState === WordState.Active} />
+                ref={setInput}
+                onFocus={() => onSelected(index)}/>
+            { active ? (
+            <div 
+                {...popper.attributes.popper}
+                style={popper.styles['popper'] as any}
+                ref={setSuggestionContainer} 
+                class={`${styles['suggestion-container']} ${value.length > 0 ? styles['show'] : ''}`}
+            >
+
+            </div> ): null
+            }
         </span>
     );
 }
@@ -45,7 +103,12 @@ export const RestorePage: FunctionComponent = () => {
         <>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
-                    { array.map((_, key) => <Word key={`word-${key}`} active={key === activeIndex}/>) }
+                    { array.map((_, i) => <Word 
+                        key={`word-${i}`}
+                        index={i}
+                        selected={activeIndex}
+                        onSelected={setIndex}
+                    />) }
                 </div>
                 <div class={styles.misc}></div>
             </div>
