@@ -33,6 +33,19 @@
             border-bottom-right-radius: 0;
         }
 
+        &.suggestion-active::before {
+            content: "";
+        }
+
+        &::before {
+            bottom: 0;
+            left: 1.5rem;
+            position: absolute;
+            height: 1pt;
+            background-color: $gray;
+            width: calc(100% - 3rem);
+        }
+
         &::after {
             content: attr(data-text) " ";
             visibility: hidden;
@@ -67,12 +80,10 @@
         }
 
         div.suggestion-container {
-            width: 100%;
-            padding: 0 2rem;
-            background-color: darken($prime, 10%);
+            min-width: 100%;
+            background-color: $prime;
             border-bottom-left-radius: 1rem;
             border-bottom-right-radius: 1rem;
-            height: 10rem;
             display: none;
             z-index: 100;
 
@@ -91,6 +102,24 @@
                 content: "";
                 border-radius: 1rem;
                 pointer-events: none;
+            }
+
+            .suggestion {
+                height: 5rem;
+                font-size: 2.5rem;
+                display: inline-block;
+                line-height: 5rem;
+                width: 100%;
+                padding: 0 2rem;
+
+                &.selected {
+                    background-color: darken($prime, 10%);
+                }
+
+                &:last-child {
+                    border-bottom-left-radius: 1rem;
+                    border-bottom-right-radius: 1rem;
+                }
             }
         }
     }
