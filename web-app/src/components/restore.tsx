@@ -98,8 +98,9 @@ const Word: FunctionComponent<{
     index: number, 
     selected: number,
     onSelected: (newIndex: number) => void, 
+    onFinished: (content: string) => void
 }> = ({ 
-    index, selected, onSelected
+    index, selected, onSelected, onFinished
 }) => {
     const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
     const [suggestionContainer, setSuggestionContainer] = useState<HTMLDivElement | null>(null);
@@ -212,8 +213,8 @@ const Word: FunctionComponent<{
                     break;
                 case 'Enter':
                     if (selectedState.word === null) return;
-                    input!.value = selectedState.word;
-                    onSelected(index + 1);
+                    setValue(selectedState.word);
+                    onFinished(selectedState.word);
                     break;
             }
         }
@@ -228,7 +229,8 @@ const Word: FunctionComponent<{
                 size={1} type="text"
                 autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
                 ref={setInput}
-                onFocus={() => onSelected(index)}/>
+                onFocus={() => onSelected(index)}
+                value={value}/>
             { active ? (
             <div 
                 {...popper.attributes.popper}
@@ -248,9 +250,24 @@ const Word: FunctionComponent<{
     );
 }
 
+const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
+
+function iterateWords(words: JSX.Element[]): JSX.Element[] {
+    const result: JSX.Element[] = [];
+
+    words.forEach((word, index) => {
+        result.push(word);
+        if (index < words.length - 1)
+            result.push(<Spacer/>) 
+    })
+
+    return result;
+}
+
 export const RestorePage: FunctionComponent = () => {
-    let [initalized, setInitalized] = useState(false);
-    let [activeIndex, setIndex] = useState(0);
+    const [initalized, setInitalized] = useState(false);
+    const [activeIndex, setIndex] = useState(0);
+    const [words, setWords] = useState([""]);
 
     useEffect(() => {
         Rust.getWordlist().then(data => {
@@ -261,20 +278,27 @@ export const RestorePage: FunctionComponent = () => {
             setInitalized(true);
         }).catch(console.error); // todo: implement global error handler
     }, [])
-    
-    const array = useMemo(() => Array.from(Array(12)), [])
 
+    const finishedHandler = (word: string) => {
+        console.log('executed', word);
+        words[activeIndex] = word;
+        setWords([...words, ""]);
+        setIndex(activeIndex + 1);
+    }
+
+    console.log(words, activeIndex);
     if (!initalized) return null;
     return (
         <>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
-                    { array.map((_, i) => <Word 
+                    { iterateWords(words.map((_, i) => <Word 
                         key={`word-${i}`}
                         index={i}
                         selected={activeIndex}
-                        onSelected={setIndex}
-                    />) }
+                        onSelected={() => {}}
+                        onFinished={finishedHandler}
+                    />)) }
                 </div>
                 <div class={styles.misc}></div>
             </div>
