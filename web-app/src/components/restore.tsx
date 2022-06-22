@@ -83,7 +83,10 @@ const Suggestions: FunctionComponent<{
     return (
         <>
             {
-                suggestions.map((word, idx) => <span class={ccs(idx)}>{ word }</span>)
+                suggestions.map((word, idx) => {
+                    
+                    return <span class={ccs(idx)}>{input}<b>{word.slice(input.length)}</b></span>
+                })
             }
         </>
     )
@@ -169,6 +172,13 @@ const Word: FunctionComponent<{
             input.focus();
         }
     }, [active]);
+
+    useEffect(() => {
+        if (input === null || wordContainer === null) return;
+        console.log('minWidth', value);
+        input.style.minWidth = '0';
+        wordContainer.dataset.text = value.trimEnd();
+    }, [!active && value.length > 0])
 
     useLayoutEffect(() => {
         popper.forceUpdate();
@@ -286,7 +296,6 @@ export const RestorePage: FunctionComponent = () => {
         setIndex(activeIndex + 1);
     }
 
-    console.log(words, activeIndex);
     if (!initalized) return null;
     return (
         <>
