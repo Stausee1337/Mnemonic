@@ -1,3 +1,4 @@
+import { StateUpdater, useState } from "preact/hooks";
 
 
 export function classNames(input: { [key: string]: boolean }): string;
@@ -23,4 +24,18 @@ export function makeId(len: number = 4): string {
         result.push(characters.at(random(0, characters.length))!)
     }
     return result.join('')
+}
+
+export function useValidationState<S>(
+    initialState: S | (() => S),
+    onSetCallback: (value: S) => S
+): [S, StateUpdater<S>] {
+    const [state, stateSetter] = useState<S>(initialState);
+    const stateSetterWrapper: StateUpdater<S> = (value) => {
+        if (typeof value === 'function') {
+            value = <S>(<any>value)(state)
+        }
+        stateSetter(onSetCallback(value));
+    };
+    return [state, stateSetterWrapper];
 }

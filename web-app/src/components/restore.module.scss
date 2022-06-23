@@ -4,7 +4,8 @@
 .grid-view {
     height: 100%;
     display: grid;
-    grid-template-rows: 1fr 1fr;
+    grid-template-areas: "a" "x" "b";
+    grid-template-rows: auto 1fr 20rem;
 }
 
 .word-box {
@@ -12,6 +13,7 @@
     // flex-direction: column;
     flex-wrap: wrap;
     gap: 0.75rem 1rem;
+    grid-area: a;
     // justify-content: space-between;
 
     span.word {
@@ -27,6 +29,10 @@
 
         @each $class, $color in ("blue": $prime, "gray": $gray, "red": "#f00000", "green": darken($green, 15%)) {
             &.#{$class} { background-color: #{$color}; }
+        }
+
+        &.blue input {
+            width: 12rem;
         }
 
         &.suggestion-active {
@@ -57,7 +63,7 @@
         }
 
         input {
-            width: auto;
+            // width: inherit;
             background: transparent;
             border: none;
             font-size: 2.5rem;
@@ -65,7 +71,6 @@
             padding: 0;
             margin: 0;
             font-family: 'Helvetica Neue', arial, sans-serif;
-            min-width: 12rem;
             resize: none;
             appearance: none;
             grid-area: 1/2;
@@ -80,18 +85,18 @@
             }
         }
 
-        div.suggestion-container {
-            min-width: 100%;
+        span.suggestion-container {
+            min-width: 16rem;
             background-color: $prime;
             border-bottom-left-radius: 1rem;
             border-bottom-right-radius: 1rem;
             display: none;
             z-index: 100;
-
+        
             &.show {
                 display: block;
             }
-
+        
             &::before {
                 left: 0;
                 top: -5rem;
@@ -104,19 +109,19 @@
                 border-radius: 1rem;
                 pointer-events: none;
             }
-
+        
             .suggestion {
                 height: 5rem;
                 font-size: 2.5rem;
-                display: inline-block;
+                display: block;
                 line-height: 5rem;
-                width: 100%;
+                // width: 100%;
                 padding: 0 2rem;
-
+        
                 &.selected {
                     background-color: darken($prime, 10%);
                 }
-
+        
                 &:last-child {
                     border-bottom-left-radius: 1rem;
                     border-bottom-right-radius: 1rem;
@@ -140,4 +145,8 @@
             border-bottom: 3pt solid black;
         }
     }
+}
+
+div.misc {
+    grid-area: b;
 }

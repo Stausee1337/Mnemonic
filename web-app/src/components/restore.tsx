@@ -1,8 +1,9 @@
 import usePopper from "@restart/ui/esm/usePopper";
 import { FunctionComponent, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
+import { createPortal } from "preact/compat"
 import { Rust } from "../interface";
-import { classNames } from "../utils";
+import { classNames, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
 
 type WordClassType = 'gray' | 'blue' | 'green' | 'red';
@@ -48,16 +49,17 @@ const Suggestions: FunctionComponent<{
     onUpdate,
     selected: selectedProp,
 }) => {
-    const [selected, setSelected] = useState<number>(null!);
+    const [selected, setSelected] = useValidationState<number>(
+        null!,
+        value => {
+            if (value === null) return 0;
+            return value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value;
+        }
+    )
     const [suggestions, setSuggestions] = useState<string[]>([]);
 
     useEffect(() => {
-        if (!Number.isInteger(selectedProp)) setSelected(-2);
-        let value = selectedProp!;
-        if (value === -2) return; // Don't deal with the abcense of a selection
-
-        setSelected(value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value);
-
+        setSelected(selectedProp!);
     }, [selectedProp]);
 
     useEffect(() => {
@@ -65,12 +67,15 @@ const Suggestions: FunctionComponent<{
     }, [selected])
 
     useEffect(() => {
-        setSuggestions(suggest(input));
-        setSelected(-2);
+        const newSuggestions = suggest(input);
+        setSuggestions(newSuggestions);
+        if (selected >= newSuggestions.length) {
+            setSelected(0);
+        }
     }, [input])
 
     useEffect(() => {
-        onSelect(selected, suggestions[selected] ?? suggestions[0] ?? null!);
+        onSelect(selected, suggestions[selected] ?? null!);
         onUpdate(suggestions.length);
     }, [suggestions])
 
@@ -97,6 +102,13 @@ type ObserverWrapperType = {
     observer: ResizeObserver
 };
 
+function getTextLength(text: string): number {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    ctx.font = "2.5rem 'Helvetica Neue', arial, sans-serif"
+    return ctx.measureText(text).width;
+}
+
 const Word: FunctionComponent<{ 
     index: number, 
     selected: number,
@@ -106,7 +118,7 @@ const Word: FunctionComponent<{
     index, selected, onSelected, onFinished
 }) => {
     const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
-    const [suggestionContainer, setSuggestionContainer] = useState<HTMLDivElement | null>(null);
+    const [suggestionContainer, setSuggestionContainer] = useState<HTMLSpanElement | null>(null);
     const [input, setInput] = useState<HTMLInputElement | null>(null);
 
     const [active, setActive] = useState(false);
@@ -148,12 +160,10 @@ const Word: FunctionComponent<{
 
     useEffect(() => {
         observerWrapper.observer.disconnect();
-        if (wordContainer)
-            observerWrapper.observer.observe(wordContainer);
         if (suggestionContainer)
             observerWrapper.observer.observe(suggestionContainer);
         return () => observerWrapper.observer.disconnect();
-    }, [wordContainer, suggestionContainer])
+    }, [suggestionContainer])
 
     useEffect(() => {
         if (selected === index) {
@@ -176,7 +186,7 @@ const Word: FunctionComponent<{
     useEffect(() => {
         if (input === null || wordContainer === null) return;
         console.log('minWidth', value);
-        input.style.minWidth = '0';
+        input.style.width = `${getTextLength(value)}px`;
         wordContainer.dataset.text = value.trimEnd();
     }, [!active && value.length > 0])
 
@@ -186,15 +196,16 @@ const Word: FunctionComponent<{
 
     observerWrapper.callback = (entries) => {
         if (suggestionContainer === null) return;
+        console.log(entries.length);
         if (entries.length > 1) return;
 
         const event = entries[0];
         if (event.target === wordContainer) {
             // suggestionContainer.style.minWidth = `${wordContainer.offsetWidth}px`
         } else if (event.target === suggestionContainer) {
-            console.log(suggestionContainer.offsetWidth);
-            const newWidth = suggestionContainer.offsetWidth - 40; 
-            input!.style.minWidth = (newWidth > 120 ? `${newWidth}px` : null) as any;
+            console.log(event.contentRect.width);
+            const newWidth = event.contentRect.width - 40; 
+            input!.style.width = newWidth > 120 ? `${newWidth}px` : `120px`;
         }
     };
     
@@ -236,13 +247,13 @@ const Word: FunctionComponent<{
             <input 
                 onInput={inputHandler} 
                 onKeyDown={keyHandler}
-                size={1} type="text"
+                type="text"
                 autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
                 ref={setInput}
                 onFocus={() => onSelected(index)}
                 value={value}/>
             { active ? (
-            <div 
+            <span 
                 {...popper.attributes.popper}
                 style={popper.styles['popper'] as any}
                 ref={setSuggestionContainer} 
@@ -254,7 +265,7 @@ const Word: FunctionComponent<{
                         onSelect={(index, word) => setSelected({index, word})}
                         onUpdate={setSuggestions}
                         selected={selectedState.index} /> : null }
-            </div> ): null
+            </span>): null
             }
         </span>
     );
