@@ -1,7 +1,7 @@
 import usePopper from "@restart/ui/esm/usePopper";
 import { FunctionComponent, JSX } from "preact";
-import { useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
-import { createPortal } from "preact/compat"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { forwardRef } from "preact/compat"
 import { Rust } from "../interface";
 import { classNames, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
@@ -38,32 +38,38 @@ function suggest(input: string): string[] {
     return wordlist.filter(predicate => predicate.startsWith(input)).slice(0, 5);
 }
 
-const Suggestions: FunctionComponent<{ 
+interface SuggestionComponent {
+    incrementSelection(): void;
+    decrementSelection(): void;
+}
+
+type SuggestionUpdateEvent = {
+    suggestionAmmount: number,
+    currentSelection: string,
+    isClick: boolean
+};
+
+type SuggestionsProps = { 
     input: string,
-    selected?: number,
-    onSelect: (index: number, word: string) => void,
-    onUpdate: (nSuggestions: number) => void
-}> = ({ 
-    input,
-    onSelect,
-    onUpdate,
-    selected: selectedProp,
-}) => {
+    onUpdate: (event: SuggestionUpdateEvent) => void
+};
+
+const Suggestions = forwardRef<SuggestionComponent, SuggestionsProps>(({ 
+    input, onUpdate
+}, ref) => {
     const [selected, setSelected] = useValidationState<number>(
-        null!,
-        value => {
-            if (value === null) return 0;
-            return value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value;
-        }
+        0,
+        value => value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value
     )
     const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [clicked, setClick] = useState<boolean>(false);
 
     useEffect(() => {
-        setSelected(selectedProp!);
-    }, [selectedProp]);
-
-    useEffect(() => {
-        onSelect(selected, suggestions[selected] ?? suggestions[0] ?? null!);
+        onUpdate({
+            suggestionAmmount: suggestions.length,
+            currentSelection: suggestions[selected] ?? null!,
+            isClick: false
+        });
     }, [selected])
 
     useEffect(() => {
@@ -75,27 +81,42 @@ const Suggestions: FunctionComponent<{
     }, [input])
 
     useEffect(() => {
-        onSelect(selected, suggestions[selected] ?? null!);
-        onUpdate(suggestions.length);
+        onUpdate({
+            suggestionAmmount: suggestions.length,
+            currentSelection: suggestions[selected] ?? null!,
+            isClick: false
+        });
     }, [suggestions])
+
+    if (ref) {
+        const component: SuggestionComponent = (ref as any).current = {
+            incrementSelection: () => setSelected(selected + 1),
+            decrementSelection: () => setSelected(selected - 1)
+        }
+    }
 
     // calculateClassString
     const ccs = (i: number) => classNames({
         [styles.suggestion]: true,
         [styles.selected]: i === selected,
     });
-
     return (
         <>
             {
-                suggestions.map((word, idx) => {
-                    
-                    return <span class={ccs(idx)}>{input}<b>{word.slice(input.length)}</b></span>
-                })
+                suggestions.map((word, idx) => <span 
+                    class={ccs(idx)}
+                    onClick={() => onUpdate({
+                        suggestionAmmount: suggestions.length,
+                        currentSelection: suggestions[idx] ?? null!,
+                        isClick: true,
+                    })}
+                >
+                    {input}<b>{word.slice(input.length)}</b>
+                </span>)
             }
         </>
     )
-}
+});
 
 type ObserverWrapperType = {
     callback: ResizeObserverCallback | null,
@@ -120,11 +141,15 @@ const Word: FunctionComponent<{
     const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
     const [suggestionContainer, setSuggestionContainer] = useState<HTMLSpanElement | null>(null);
     const [input, setInput] = useState<HTMLInputElement | null>(null);
+    const suggestion = useRef<SuggestionComponent>(null);
 
     const [active, setActive] = useState(false);
-    const [suggestions, setSuggestions] = useState(0);
     const [value, setValue] = useState("");
-    const [selectedState, setSelected] = useState<{ index: number, word: string }>({ word: null!, index: null! })
+    const [selectedState, setSelected] = useState<SuggestionUpdateEvent>({
+        suggestionAmmount: null!,
+        currentSelection: null!,
+        isClick: false
+    })
 
     const popper = usePopper(
         wordContainer,
@@ -184,8 +209,14 @@ const Word: FunctionComponent<{
     }, [active]);
 
     useEffect(() => {
+        if (selectedState.isClick) {
+            finish();
+        }
+    }, [selectedState.isClick])
+
+    useEffect(() => {
         if (input === null || wordContainer === null) return;
-        console.log('minWidth', value);
+        input.style.minWidth = (null as any);
         input.style.width = `${getTextLength(value)}px`;
         wordContainer.dataset.text = value.trimEnd();
     }, [!active && value.length > 0])
@@ -205,7 +236,7 @@ const Word: FunctionComponent<{
         } else if (event.target === suggestionContainer) {
             console.log(event.contentRect.width);
             const newWidth = event.contentRect.width - 40; 
-            input!.style.width = newWidth > 120 ? `${newWidth}px` : `120px`;
+            input!.style.minWidth = newWidth > 120 ? `${newWidth}px` : `120px`;
         }
     };
     
@@ -215,33 +246,33 @@ const Word: FunctionComponent<{
         input.parentElement!.dataset.text = input.value;
     };
 
+    const finish = () => {
+        if (selectedState.currentSelection === null) return;
+        setValue(selectedState.currentSelection);
+        onFinished(selectedState.currentSelection);
+    };
+
     const keyHandler = (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
         if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
             e.preventDefault();
 
             switch(e.key) {
                 case 'ArrowUp':
-                    setSelected({
-                        word: selectedState.word,
-                        index: selectedState.index - 1,
-                    });
+                    if (suggestion.current)
+                        suggestion.current.decrementSelection();
                     break;
                 case 'ArrowDown':
-                    setSelected({
-                        word: selectedState.word,
-                        index: selectedState.index + 1,
-                    })
+                    if (suggestion.current)
+                        suggestion.current.incrementSelection();
                     break;
                 case 'Enter':
-                    if (selectedState.word === null) return;
-                    setValue(selectedState.word);
-                    onFinished(selectedState.word);
+                    finish();
                     break;
             }
         }
     }
 
-    const suggestionActive = active && value.length > 0 && suggestions > 0 ? styles['suggestion-active'] : ''
+    const suggestionActive = active && value.length > 0 && selectedState.suggestionAmmount > 0 ? styles['suggestion-active'] : ''
     return (
         <span ref={setSpan} class={`${styles['word']} ${styles[validationClass ?? '']} ${suggestionActive}`}>
             <input 
@@ -251,7 +282,8 @@ const Word: FunctionComponent<{
                 autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
                 ref={setInput}
                 onFocus={() => onSelected(index)}
-                value={value}/>
+                value={value}
+                size={1}/>
             { active ? (
             <span 
                 {...popper.attributes.popper}
@@ -261,10 +293,10 @@ const Word: FunctionComponent<{
             >
                 { value.length > 0 ? 
                     <Suggestions 
+                        ref={suggestion}
                         input={value} 
-                        onSelect={(index, word) => setSelected({index, word})}
-                        onUpdate={setSuggestions}
-                        selected={selectedState.index} /> : null }
+                        onUpdate={setSelected}
+                        /> : null }
             </span>): null
             }
         </span>
