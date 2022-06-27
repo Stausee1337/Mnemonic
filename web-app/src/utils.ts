@@ -39,3 +39,9 @@ export function useValidationState<S>(
     };
     return [state, stateSetterWrapper];
 }
+
+export function useForceUpdate(): () => void {
+    const [value, setter] = useState(0);
+
+    return () => setter(value + 1);
+}

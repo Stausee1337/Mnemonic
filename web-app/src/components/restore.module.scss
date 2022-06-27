@@ -25,14 +25,28 @@
         align-items: center;
         display: inline-grid;
         position: relative;
+        background-color: var(--mn-validation-color);
 
 
-        @each $class, $color in ("blue": $prime, "gray": $gray, "red": "#f00000", "green": darken($green, 15%)) {
-            &.#{$class} { background-color: #{$color}; }
+        @each $class, $color in ("idle": $prime, "inactive": $gray, "invalid": #f00000, "valid": darken($green, 15%)) {
+            &.#{$class} { 
+                --mn-validation-color: #{$color};
+                --mn-validation-color-dark: #{darken($color, 10%)};
+            }
         }
 
-        &.blue input {
+        &.idle input {
             min-width: 12rem;
+        }
+
+        &.inactive input {
+            min-width: 12rem;
+        }
+
+        &.flushing {
+            background: linear-gradient(to right, #007313 37.5%, #006eff 62.5%);
+            background-size: 200%;
+            animation: flushing 50ms ease-in forwards;
         }
 
         &.suggestion-active {
@@ -87,7 +101,7 @@
 
         span.suggestion-container {
             min-width: 16rem;
-            background-color: $prime;
+            background-color: var(--mn-validation-color);
             border-bottom-left-radius: 1rem;
             border-bottom-right-radius: 1rem;
             display: none;
@@ -119,7 +133,7 @@
                 padding: 0 2rem;
         
                 &.selected {
-                    background-color: darken($prime, 10%);
+                    background-color: var(--mn-validation-color-dark);
                 }
         
                 &:last-child {
@@ -149,4 +163,16 @@
 
 div.misc {
     grid-area: b;
+}
+
+@keyframes flushing {
+    0% {
+        background-position: 100% 0;
+    }
+    50% {
+        background-position: 50% 0;
+    }
+    100% {
+        background-position: 0% 0;
+    }
 }

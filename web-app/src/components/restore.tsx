@@ -3,21 +3,11 @@ import { FunctionComponent, JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { forwardRef } from "preact/compat"
 import { Rust } from "../interface";
-import { classNames, useValidationState } from "../utils";
+import { classNames, useForceUpdate, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
+import { useValidation, ValidatorModel } from "../validation";
 
-type WordClassType = 'gray' | 'blue' | 'green' | 'red';
-
-function runValidators(word: string): boolean {
-    if (!word) return false;
-
-    const wordlist = getWordlist();
-    if (wordlist === null) {
-        // todo: call global error handler
-        throw Error('Cant open wordlist');
-    }
-    return wordlist.includes(word);
-}
+type WordClassType = 'gray' | 'blue' | 'green' | 'red' | 'flushing';
 
 function storeWordlist(wordlist: string[]) {
     (window as any)['wordlist'] = wordlist;
@@ -29,13 +19,17 @@ function getWordlist(): string[] | null {
     return wordlist as any;
 }
 
-function suggest(input: string): string[] {
+function getWordlistWithErrorHandler(): string[] {
     const wordlist = getWordlist();
     if (wordlist === null) {
         // todo: call global error handler
         throw Error('Cant open wordlist');
     }
-    return wordlist.filter(predicate => predicate.startsWith(input)).slice(0, 5);
+    return wordlist;
+}
+
+function suggest(input: string): string[] {
+    return getWordlistWithErrorHandler().filter(predicate => predicate.startsWith(input)).slice(0, 5);
 }
 
 interface SuggestionComponent {
@@ -62,7 +56,6 @@ const Suggestions = forwardRef<SuggestionComponent, SuggestionsProps>(({
         value => value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value
     )
     const [suggestions, setSuggestions] = useState<string[]>([]);
-    const [clicked, setClick] = useState<boolean>(false);
 
     useEffect(() => {
         onUpdate({
@@ -89,7 +82,7 @@ const Suggestions = forwardRef<SuggestionComponent, SuggestionsProps>(({
     }, [suggestions])
 
     if (ref) {
-        const component: SuggestionComponent = (ref as any).current = {
+        (ref as any).current = {
             incrementSelection: () => setSelected(selected + 1),
             decrementSelection: () => setSelected(selected - 1)
         }
@@ -131,19 +124,19 @@ function getTextLength(text: string): number {
 }
 
 const Word: FunctionComponent<{ 
-    index: number, 
-    selected: number,
-    onSelected: (newIndex: number) => void, 
+    active: boolean,
+    current: boolean,
+    onSelected: () => void, 
     onFinished: (content: string) => void
 }> = ({ 
-    index, selected, onSelected, onFinished
+    active, current, onSelected, onFinished
 }) => {
+    const forceUpdate = useForceUpdate();
     const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
     const [suggestionContainer, setSuggestionContainer] = useState<HTMLSpanElement | null>(null);
     const [input, setInput] = useState<HTMLInputElement | null>(null);
     const suggestion = useRef<SuggestionComponent>(null);
 
-    const [active, setActive] = useState(false);
     const [value, setValue] = useState("");
     const [selectedState, setSelected] = useState<SuggestionUpdateEvent>({
         suggestionAmmount: null!,
@@ -157,17 +150,12 @@ const Word: FunctionComponent<{
         {
             placement: "bottom-start"
         }
-    )
+    );
 
-    const validationClass = useMemo<WordClassType>(() => {
-        const isEmpty = value.length === 0;
-        if (active) {
-            return 'blue';
-        } else {
-            if (isEmpty && index > selected) return 'gray';
-            return runValidators(value) ? 'green' : 'red';
-        }
-    }, [active, value, selected])
+    const validation = useValidation({
+        required: v => Boolean(v.length),
+        wordlist: v => getWordlistWithErrorHandler().includes(v)
+    });
 
     const observerWrapper = useMemo<ObserverWrapperType>(() => {
         const resizeObserver = new ResizeObserver((...args) => {
@@ -191,14 +179,6 @@ const Word: FunctionComponent<{
     }, [suggestionContainer])
 
     useEffect(() => {
-        if (selected === index) {
-            setActive(true);
-        } else if (active) {
-            setActive(false);
-        }
-    }, [selected]);
-
-    useEffect(() => {
         if (active) {
             if (input === null) {
                 console.log('input element is null');
@@ -206,7 +186,7 @@ const Word: FunctionComponent<{
             }
             input.focus();
         }
-    }, [active]);
+    }, [active, input]);
 
     useEffect(() => {
         if (selectedState.isClick) {
@@ -221,20 +201,23 @@ const Word: FunctionComponent<{
         wordContainer.dataset.text = value.trimEnd();
     }, [!active && value.length > 0])
 
+    useEffect(() => {
+        validation.clear();
+        forceUpdate();
+        if (input) 
+            input.style.width = (null as any);
+    }, [active && !current])
+
     useLayoutEffect(() => {
         popper.forceUpdate();
-    }, [active && value.length]);
+    }, [active && value.length && selectedState.suggestionAmmount]);
 
     observerWrapper.callback = (entries) => {
         if (suggestionContainer === null) return;
-        console.log(entries.length);
         if (entries.length > 1) return;
 
         const event = entries[0];
-        if (event.target === wordContainer) {
-            // suggestionContainer.style.minWidth = `${wordContainer.offsetWidth}px`
-        } else if (event.target === suggestionContainer) {
-            console.log(event.contentRect.width);
+        if (event.target === suggestionContainer) {
             const newWidth = event.contentRect.width - 40; 
             input!.style.minWidth = newWidth > 120 ? `${newWidth}px` : `120px`;
         }
@@ -247,12 +230,18 @@ const Word: FunctionComponent<{
     };
 
     const finish = () => {
-        if (selectedState.currentSelection === null) return;
-        setValue(selectedState.currentSelection);
-        onFinished(selectedState.currentSelection);
+        const predictedValue = selectedState?.currentSelection ?? input?.value;
+        console.log(predictedValue);
+        if (validation.finish(predictedValue)) {
+            setValue(selectedState.currentSelection);
+            onFinished(selectedState.currentSelection);
+        } else {
+            forceUpdate();
+        }
     };
 
     const keyHandler = (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+        console.log(e);
         if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
             e.preventDefault();
 
@@ -272,24 +261,39 @@ const Word: FunctionComponent<{
         }
     }
 
-    const suggestionActive = active && value.length > 0 && selectedState.suggestionAmmount > 0 ? styles['suggestion-active'] : ''
+    const focusHandler = () => {
+        onSelected();
+    }
+
+    const valid2 = { valid: validation.valid, touched: validation.touched, dirty: validation.dirty }
     return (
-        <span ref={setSpan} class={`${styles['word']} ${styles[validationClass ?? '']} ${suggestionActive}`}>
-            <input 
-                onInput={inputHandler} 
-                onKeyDown={keyHandler}
-                type="text"
-                autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
-                ref={setInput}
-                onFocus={() => onSelected(index)}
-                value={value}
-                size={1}/>
+        <span ref={setSpan} 
+            class={classNames({
+                [styles.word]: true,
+                [styles['suggestion-active']]: active && value.length > 0 && selectedState.suggestionAmmount > 0,
+                [styles.idle]: !validation.touched && active,
+                [styles.valid]: validation.touched && validation.dirty && validation.valid,
+                [styles.invalid]: validation.touched && validation.dirty && !validation.valid,
+                [styles.inactive]: !validation.valid && !active,
+            })}
+            data-validation={Object.entries(valid2).filter(([_, b]) => b).map(([k, _]) => k).join(' ')}
+        >
+            <ValidatorModel onChange={inputHandler} validation={validation}>
+                <input
+                    onFocus={!active ? focusHandler : undefined}
+                    onKeyDown={keyHandler}
+                    type="text"
+                    autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
+                    ref={setInput}
+                    value={value}
+                    size={1}/>
+            </ValidatorModel>
             { active ? (
             <span 
                 {...popper.attributes.popper}
                 style={popper.styles['popper'] as any}
                 ref={setSuggestionContainer} 
-                class={`${styles['suggestion-container']} ${value.length > 0 ? styles['show'] : ''}`}
+                class={`${styles['suggestion-container']} ${value.length > 0 && selectedState.suggestionAmmount > 0 ? styles['show'] : ''}`}
             >
                 { value.length > 0 ? 
                     <Suggestions 
@@ -346,9 +350,9 @@ export const RestorePage: FunctionComponent = () => {
                 <div class={styles['word-box']}>
                     { iterateWords(words.map((_, i) => <Word 
                         key={`word-${i}`}
-                        index={i}
-                        selected={activeIndex}
-                        onSelected={() => {}}
+                        active={i === activeIndex}
+                        current={words.length-1 === i}
+                        onSelected={() => setIndex(i)}
                         onFinished={finishedHandler}
                     />)) }
                 </div>
