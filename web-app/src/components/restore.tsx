@@ -202,11 +202,16 @@ const Word: FunctionComponent<{
     }, [!active && value.length > 0])
 
     useEffect(() => {
-        validation.clear();
-        forceUpdate();
-        if (input) 
-            input.style.width = (null as any);
-    }, [active && !current])
+        if (active && !current) {
+            validation.clear();
+            validation.validate(value);
+            forceUpdate();
+            if (input) {
+                input.style.width = (null as any);
+                input.select();
+            }
+        }
+    }, [active, current])
 
     useLayoutEffect(() => {
         popper.forceUpdate();
@@ -265,14 +270,21 @@ const Word: FunctionComponent<{
         onSelected();
     }
 
-    const valid2 = { valid: validation.valid, touched: validation.touched, dirty: validation.dirty }
+    const valid2 = {
+        valid: validation.valid,
+        invalid: !validation.valid,
+        touched: validation.touched,
+        pristine: !validation.touched,
+        dirty: validation.dirty,
+        clean: !validation.dirty
+    }
     return (
         <span ref={setSpan} 
             class={classNames({
                 [styles.word]: true,
                 [styles['suggestion-active']]: active && value.length > 0 && selectedState.suggestionAmmount > 0,
-                [styles.idle]: !validation.touched && active,
-                [styles.valid]: validation.touched && validation.dirty && validation.valid,
+                [styles.idle]: active,
+                [styles.valid]: validation.touched && validation.dirty && validation.valid && !active,
                 [styles.invalid]: validation.touched && validation.dirty && !validation.valid,
                 [styles.inactive]: !validation.valid && !active,
             })}
@@ -325,6 +337,7 @@ export const RestorePage: FunctionComponent = () => {
     const [initalized, setInitalized] = useState(false);
     const [activeIndex, setIndex] = useState(0);
     const [words, setWords] = useState([""]);
+    const [isSNCMode, setSNC] = useState(false); // SelectedNonCurrent
 
     useEffect(() => {
         Rust.getWordlist().then(data => {
@@ -339,8 +352,19 @@ export const RestorePage: FunctionComponent = () => {
     const finishedHandler = (word: string) => {
         console.log('executed', word);
         words[activeIndex] = word;
-        setWords([...words, ""]);
-        setIndex(activeIndex + 1);
+        if (!isSNCMode) {
+            setWords([...words, ""]);
+            setIndex(activeIndex + 1);
+        } else {
+            setIndex(words.length - 1);
+            setSNC(false);
+        }
+    }
+
+    // selectionHandlerFactory
+    const shf = (idx: number) => () => {
+        setIndex(idx);
+        setSNC(true);
     }
 
     if (!initalized) return null;
@@ -352,7 +376,7 @@ export const RestorePage: FunctionComponent = () => {
                         key={`word-${i}`}
                         active={i === activeIndex}
                         current={words.length-1 === i}
-                        onSelected={() => setIndex(i)}
+                        onSelected={shf(i)}
                         onFinished={finishedHandler}
                     />)) }
                 </div>
