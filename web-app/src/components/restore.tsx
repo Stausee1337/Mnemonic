@@ -278,6 +278,11 @@ const Word: FunctionComponent<{
         dirty: validation.dirty,
         clean: !validation.dirty
     }
+
+    const placementProp = { 
+        'placement-up': popper.placement === "top-start" ? '' : null,
+        'placement-down': popper.placement === "bottom-start" ? '' : null
+    }
     return (
         <span ref={setSpan} 
             class={classNames({
@@ -288,6 +293,7 @@ const Word: FunctionComponent<{
                 [styles.invalid]: validation.touched && validation.dirty && !validation.valid,
                 [styles.inactive]: !validation.valid && !active,
             })}
+            {...placementProp}
             data-validation={Object.entries(valid2).filter(([_, b]) => b).map(([k, _]) => k).join(' ')}
         >
             <ValidatorModel onChange={inputHandler} validation={validation}>

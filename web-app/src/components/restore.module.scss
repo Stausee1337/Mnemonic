@@ -49,9 +49,42 @@
             animation: flushing 50ms ease-in forwards;
         }
 
-        &.suggestion-active {
+        &.suggestion-active[placement-up] {
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+
+            &::before { top: 0; }
+
+            span.suggestion-container {
+                border-top-left-radius: 1rem;
+                border-top-right-radius: 1rem;
+
+                .suggestion:first-child {
+                    border-top-left-radius: 1rem;
+                    border-top-right-radius: 1rem;
+                }
+
+                &::before { bottom: -5rem; }
+            }
+        }
+
+        &.suggestion-active[placement-down] {
             border-bottom-left-radius: 0;
             border-bottom-right-radius: 0;
+
+            &::before { bottom: 0; }
+
+            span.suggestion-container {
+                border-bottom-left-radius: 1rem;
+                border-bottom-right-radius: 1rem;
+
+                .suggestion:last-child {
+                    border-bottom-left-radius: 1rem;
+                    border-bottom-right-radius: 1rem;
+                }
+
+                &::before { top: -5rem; }
+            }
         }
 
         &.suggestion-active::before {
@@ -59,7 +92,6 @@
         }
 
         &::before {
-            bottom: 0;
             left: 1.5rem;
             position: absolute;
             height: 1pt;
@@ -102,8 +134,6 @@
         span.suggestion-container {
             min-width: 16rem;
             background-color: var(--mn-validation-color);
-            border-bottom-left-radius: 1rem;
-            border-bottom-right-radius: 1rem;
             display: none;
             z-index: 100;
         
@@ -113,7 +143,6 @@
         
             &::before {
                 left: 0;
-                top: -5rem;
                 width: 100%;
                 height: calc(100% + 5rem);
                 position: absolute;
@@ -134,11 +163,6 @@
         
                 &.selected {
                     background-color: var(--mn-validation-color-dark);
-                }
-        
-                &:last-child {
-                    border-bottom-left-radius: 1rem;
-                    border-bottom-right-radius: 1rem;
                 }
             }
         }
