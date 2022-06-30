@@ -5,7 +5,7 @@
     height: 100%;
     display: grid;
     grid-template-areas: "a" "x" "b";
-    grid-template-rows: auto 1fr 20rem;
+    grid-template-rows: auto 1fr 30rem;
 }
 
 .word-box {
@@ -28,19 +28,25 @@
         background-color: var(--mn-validation-color);
 
 
-        @each $class, $color in ("idle": $prime, "inactive": $gray, "invalid": #f00000, "valid": darken($green, 15%)) {
+        @each $class, $color in ("invalid": #f00000, "valid": darken($green, 15%)) {
             &.#{$class} { 
                 --mn-validation-color: #{$color};
                 --mn-validation-color-dark: #{darken($color, 10%)};
             }
         }
 
-        &.idle input {
-            min-width: 12rem;
+        &[active]:not(.invalid) {
+            --mn-validation-color: #{$prime};
+            --mn-validation-color-dark: #{darken($prime, 10%)};
         }
 
-        &.inactive input {
-            min-width: 12rem;
+        &[inactive]:not(.invalid,.valid) {
+            --mn-validation-color: #{$gray};
+            --mn-validation-color-dark: #{darken($gray, 10%)};
+        }
+
+        &[active],&[inactive]:not(.invalid,.valid) {
+            input { min-width: 12rem; }
         }
 
         &.flushing {
@@ -187,6 +193,8 @@
 
 div.misc {
     grid-area: b;
+    display: flex;
+    justify-content: center;
 }
 
 @keyframes flushing {

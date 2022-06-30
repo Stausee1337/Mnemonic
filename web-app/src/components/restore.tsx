@@ -6,6 +6,7 @@ import { Rust } from "../interface";
 import { classNames, useForceUpdate, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
 import { useValidation, ValidatorModel } from "../validation";
+import { Button } from "../controls";
 
 type WordClassType = 'gray' | 'blue' | 'green' | 'red' | 'flushing';
 
@@ -103,6 +104,7 @@ const Suggestions = forwardRef<SuggestionComponent, SuggestionsProps>(({
                         currentSelection: suggestions[idx] ?? null!,
                         isClick: true,
                     })}
+                    onMouseOver={() => setSelected(idx)}
                 >
                     {input}<b>{word.slice(input.length)}</b>
                 </span>)
@@ -126,10 +128,10 @@ function getTextLength(text: string): number {
 const Word: FunctionComponent<{ 
     active: boolean,
     current: boolean,
-    onSelected: () => void, 
-    onFinished: (content: string) => void
+    parentControls: PassedControlFunctions,
+    onSelected: () => void,
 }> = ({ 
-    active, current, onSelected, onFinished
+    active, current, onSelected, parentControls
 }) => {
     const forceUpdate = useForceUpdate();
     const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
@@ -234,19 +236,31 @@ const Word: FunctionComponent<{
         input.parentElement!.dataset.text = input.value;
     };
 
+    const changeWord = () => {
+        if (!active) return false;
+        if (value.length > 0) {
+            validation.finish(value);
+            parentControls.setValue(value);
+            parentControls.selectNext();
+            validation.dirty = true;
+            return true;
+        }
+    }
+
     const finish = () => {
         const predictedValue = selectedState?.currentSelection ?? input?.value;
         console.log(predictedValue);
         if (validation.finish(predictedValue)) {
             setValue(selectedState.currentSelection);
-            onFinished(selectedState.currentSelection);
+            parentControls.setValue(selectedState.currentSelection);
+            parentControls.spawnNew();
+            validation.dirty = true;
         } else {
             forceUpdate();
         }
     };
 
     const keyHandler = (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
-        console.log(e);
         if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
             e.preventDefault();
 
@@ -263,11 +277,23 @@ const Word: FunctionComponent<{
                     finish();
                     break;
             }
+        } else if (e.key === 'Tab') {
+            if (changeWord()) {
+                e.preventDefault();
+            }
         }
     }
 
     const focusHandler = () => {
         onSelected();
+    }
+
+    const blurHandler = () => {
+        if (active) {
+            validation.finish(value);
+            parentControls.setValue(value);
+            validation.dirty = true;
+        }
     }
 
     const valid2 = {
@@ -279,25 +305,26 @@ const Word: FunctionComponent<{
         clean: !validation.dirty
     }
 
-    const placementProp = { 
+    const dynamicProps = { 
         'placement-up': popper.placement === "top-start" ? '' : null,
-        'placement-down': popper.placement === "bottom-start" ? '' : null
+        'placement-down': popper.placement === "bottom-start" ? '' : null,
+        'active': active ? '' : null,
+        'inactive': !active ? '' : null
     }
     return (
         <span ref={setSpan} 
             class={classNames({
                 [styles.word]: true,
                 [styles['suggestion-active']]: active && value.length > 0 && selectedState.suggestionAmmount > 0,
-                [styles.idle]: active,
                 [styles.valid]: validation.touched && validation.dirty && validation.valid && !active,
                 [styles.invalid]: validation.touched && validation.dirty && !validation.valid,
-                [styles.inactive]: !validation.valid && !active,
             })}
-            {...placementProp}
+            {...dynamicProps}
             data-validation={Object.entries(valid2).filter(([_, b]) => b).map(([k, _]) => k).join(' ')}
         >
             <ValidatorModel onChange={inputHandler} validation={validation}>
                 <input
+                    onBlur={!current ? blurHandler : undefined}
                     onFocus={!active ? focusHandler : undefined}
                     onKeyDown={keyHandler}
                     type="text"
@@ -339,6 +366,12 @@ function iterateWords(words: JSX.Element[]): JSX.Element[] {
     return result;
 }
 
+type PassedControlFunctions = {
+    setValue: (value: string) => void,
+    spawnNew: () => void,
+    selectNext: () => void,
+};
+
 export const RestorePage: FunctionComponent = () => {
     const [initalized, setInitalized] = useState(false);
     const [activeIndex, setIndex] = useState(0);
@@ -355,17 +388,32 @@ export const RestorePage: FunctionComponent = () => {
         }).catch(console.error); // todo: implement global error handler
     }, [])
 
-    const finishedHandler = (word: string) => {
-        console.log('executed', word);
-        words[activeIndex] = word;
-        if (!isSNCMode) {
-            setWords([...words, ""]);
+    const functions: PassedControlFunctions = {
+        setValue(word) {
+            console.log('executed', word);
+            words[activeIndex] = word;
+        },
+        spawnNew() {
+            if (words.length === 12) {
+                setIndex(-1);
+                document.body.focus();
+                return;
+            }
+            if (!isSNCMode) {
+                setWords([...words, ""]);
+                setIndex(activeIndex + 1);
+            } else {
+                setIndex(words.length - 1);
+                setSNC(false);
+            }
+        },
+        selectNext() {
+            if (activeIndex === words.length-1) {
+                functions.spawnNew();
+            }
             setIndex(activeIndex + 1);
-        } else {
-            setIndex(words.length - 1);
-            setSNC(false);
-        }
-    }
+        },
+    };
 
     // selectionHandlerFactory
     const shf = (idx: number) => () => {
@@ -382,11 +430,13 @@ export const RestorePage: FunctionComponent = () => {
                         key={`word-${i}`}
                         active={i === activeIndex}
                         current={words.length-1 === i}
+                        parentControls={functions}
                         onSelected={shf(i)}
-                        onFinished={finishedHandler}
                     />)) }
                 </div>
-                <div class={styles.misc}></div>
+                <div class={styles.misc}>
+                    <Button>Calculate Password</Button>
+                </div>
             </div>
         </>
     );
