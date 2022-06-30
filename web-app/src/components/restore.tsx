@@ -182,11 +182,7 @@ const Word: FunctionComponent<{
 
     useEffect(() => {
         if (active) {
-            if (input === null) {
-                console.log('input element is null');
-                return;
-            }
-            input.focus();
+            input?.focus();
         }
     }, [active, input]);
 
@@ -241,15 +237,13 @@ const Word: FunctionComponent<{
         if (value.length > 0) {
             validation.finish(value);
             parentControls.setValue(value);
-            parentControls.selectNext();
             validation.dirty = true;
-            return true;
+            return false;
         }
     }
 
     const finish = () => {
         const predictedValue = selectedState?.currentSelection ?? input?.value;
-        console.log(predictedValue);
         if (validation.finish(predictedValue)) {
             setValue(selectedState.currentSelection);
             parentControls.setValue(selectedState.currentSelection);
@@ -390,7 +384,6 @@ export const RestorePage: FunctionComponent = () => {
 
     const functions: PassedControlFunctions = {
         setValue(word) {
-            console.log('executed', word);
             words[activeIndex] = word;
         },
         spawnNew() {
@@ -399,6 +392,7 @@ export const RestorePage: FunctionComponent = () => {
                 document.body.focus();
                 return;
             }
+            console.log(isSNCMode, activeIndex, words.length);
             if (!isSNCMode) {
                 setWords([...words, ""]);
                 setIndex(activeIndex + 1);
@@ -417,8 +411,9 @@ export const RestorePage: FunctionComponent = () => {
 
     // selectionHandlerFactory
     const shf = (idx: number) => () => {
+        console.log(idx);
         setIndex(idx);
-        setSNC(true);
+        setSNC(words.length-1 !== idx);
     }
 
     if (!initalized) return null;
@@ -430,7 +425,7 @@ export const RestorePage: FunctionComponent = () => {
                         key={`word-${i}`}
                         active={i === activeIndex}
                         current={words.length-1 === i}
-                        parentControls={functions}
+                        parentControls={i === activeIndex ? functions : null!}
                         onSelected={shf(i)}
                     />)) }
                 </div>
