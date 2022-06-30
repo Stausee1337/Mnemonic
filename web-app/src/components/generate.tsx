@@ -1,5 +1,5 @@
-import { FunctionComponent, JSX } from "preact";
-import { ToggleSwitch, Slider, TooltipButton, Button } from "../controls"
+import { FunctionComponent } from "preact";
+import { ToggleSwitch, Slider, TooltipButton } from "../controls"
 import styles from "./generate.module.scss"
 import { random, classNames } from "../utils"
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -7,6 +7,7 @@ import { Rust } from "../interface"
 import copyIcon from "../icons/copy.svg"
 import updateIcon from "../icons/update.svg"
 import printerIcon from "../icons/printer.svg"
+import checkIcon from "../icons/check.svg"
 import { useNotifier } from "../notification";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
@@ -149,6 +150,9 @@ const ActionSidebar: FunctionComponent<{
             </TooltipButton>
             <TooltipButton onClick={printHandler} tooltip="Print Mnemonic">
                 <img src={printerIcon}/>
+            </TooltipButton>
+            <TooltipButton tooltip="Finish and exit">
+                <img src={checkIcon}/>
             </TooltipButton>
         </div>
     );
@@ -322,9 +326,6 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                         />
                     </div>
                 </div>
-            </div>
-            <div>
-                <Button>Continue</Button>
             </div>
         </>
     );
