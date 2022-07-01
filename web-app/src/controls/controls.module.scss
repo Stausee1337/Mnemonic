@@ -1,24 +1,5 @@
 @import '../var';
 
-.space-filler {
-    width: 100%;
-    height: 100%;
-}
-
-.h-center {
-    display: flex;
-    align-items: center;
-    flex-direction: column
-}
-
-.center {
-    @extend .space-filler;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-}
-
 .button {
     height: 5rem;
     padding: 0 2rem;
@@ -33,53 +14,6 @@
     &:hover {
         background-color: darken($prime, 5%);
     }
-}
-
-.box {
-    padding: 0.5rem;
-    margin: 1rem;
-    border: 1.2pt solid $gray;
-    border-radius: 20px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    // overflow: scroll;
-}
-
-.columns {
-    @extend .space-filler;
-    display: flex;
-    flex-direction: row;
-
-    div:not(:last-child) {
-        border-right: 1.2pt solid $gray;
-    }
-    
-    div {
-
-        padding: 0 0.5rem;
-    }
-}
-
-.expandable-container {
-    div:not(.expanded) {
-        display: none;
-    }
-
-    span {
-        padding: 1rem 0;
-        color: #808080;
-        text-transform: uppercase;
-        font-weight: 550;
-        cursor: pointer;
-    }
-}
-
-blockquote {
-    border-left: 2pt solid $gray;
-    margin: 1rem 0;
-    padding: 0.5rem 10px;
 }
 
 label.toggle {

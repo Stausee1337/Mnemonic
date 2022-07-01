@@ -1,32 +1,6 @@
 import { FunctionComponent, createContext, isValidElement, ComponentChildren } from "preact";
 import { useState, useContext, useMemo } from "preact/hooks"
-import React, { Children } from "preact/compat"
-import styles from "./controls.module.scss";
-import { classNames } from "../utils"
-
-export const ExpandableContainer: FunctionComponent = (props) => {
-    const [expanded, setExpanded] = useState(false);
-    console.log(styles);
-
-    return (
-        <div className={styles['expandable-container']}>
-            <div className={classNames({ [styles.expanded]: expanded })}>
-                { props.children }
-            </div>
-            <span onClick={() => setExpanded(!expanded)}>
-                { expanded ? 'Show less' : 'Show more' }
-            </span>
-        </div>
-    )
-}
-
-export const InteractiveWordDemo: FunctionComponent = () => {
-    return (
-        <div>
-            
-        </div>
-    )
-}
+import { Children } from "preact/compat"
 
 type Navigator = { go: (change: string | null) => void }
 export interface PaginationContextObject {
