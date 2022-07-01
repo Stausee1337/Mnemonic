@@ -79,9 +79,13 @@ def calc_cecksum(bitstr):
     return hashlib.sha256(bitstr).digest()[1] & 0b1111
 
 
-def hash_extend(seed, length):
+def hash_extend(seed, config):
     seed = bytearray(seed)
-    seed.append(length)
+    seed.append(config["length"])
+    config = itemgetter('characters', 'digits', 'punctuation', 'special')(config)
+    seed.append(
+        functools.reduce(lambda c, p: c | p, (i<<abs(s-3) for s, i in enumerate(map(int, config))))
+    )
     return hashlib.sha512(seed).digest()
 
 
@@ -216,7 +220,7 @@ def generate_phrase(config):
     checksum = calc_cecksum(seed)
     
     binstr = (int.from_bytes(seed, byteorder='big') << 4) | checksum
-    return generate_mnemonic(binstr), encode_log(hash_extend(seed, config["length"]), config)
+    return generate_mnemonic(binstr), encode_log(hash_extend(seed, config), config)
 
 
 @export
@@ -225,6 +229,5 @@ def from_phrase(phrase, config):
     bitstr, checksum = retrieve_bitstr(chunks)
     if checksum != calc_cecksum(bitstr):
         raise Exception("ChecksumError: Checksum doesn't match! Probably you misstyped something.")
-    length = config["length"]
 
-    return phrase, encode_log(hash_extend(bitstr, length), config)
+    return phrase, encode_log(hash_extend(bitstr, config), config)
