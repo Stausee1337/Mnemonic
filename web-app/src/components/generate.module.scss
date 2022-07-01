@@ -27,7 +27,6 @@ div.word-container {
     span.word {
         height: 5rem;
         padding: 0 2rem;
-        // background-color: #00e5ff;
         background-color: $prime;
         color: white;
         border-radius: 1rem;
@@ -36,6 +35,7 @@ div.word-container {
         align-items: center;
         opacity: 0;
         animation: pop 500ms linear forwards;
+        line-height: 5rem;
     }
 
     span.spacer {
