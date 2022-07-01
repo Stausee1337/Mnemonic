@@ -84,8 +84,6 @@ blockquote {
 
 label.toggle {
     display: inline-block;
-    font-size: 1.8rem;
-    color: black;
     padding: 0 0 0 5.5rem;
     margin: 0 0 1rem 0;
     position: relative;
@@ -97,43 +95,59 @@ label.toggle {
         display: none;
     }
 
-    input:checked + span.switch {
-        background-color: $prime;
+    &[disabled] {
+        cursor: default;
+        span {
+            opacity: 0.5;
+        }
     }
 
-    input:disabled + span.switch {
-        background-color: $gray;
-    }
-
+    $size: 2.8rem;
     span.switch  {
-        height: 2.2rem;
+        height: 1.8rem;
         width: 4.5rem;
         display: block;
         position: absolute;
-        background-color: $red;
+        background-color: $gray;
         border-radius: 3.4rem;
         top: 0;
         left: 0;
-        transition: background 300ms;
-
+        transition: opacity 150ms;
+        
         &::before {
-            $size: 2.8rem;
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background-color: lighten($prime, 35%);
+            width: $size/2;
+            border-top-left-radius: 3.4rem;
+            border-bottom-left-radius: 3.4rem;
 
+            transition: width 250ms;
+        }
+        &::after {
             content: "";
             position: absolute;
             height: $size;
             width: $size;
             background-color: white;
             border-radius: 100%;
-            top: calc((2.2rem/2) - ($size/2));
+            top: ((1.8rem/2) - ($size/2));
             left: 0;    
-            transition: all 300ms;
             box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.3);
+            transition: all 250ms;
         }
     }
 
     input:checked + span.switch::before {
-        transform: translateX(1.7rem);
+        width: calc(100% - ($size/2));
+    }
+
+    input:checked + span.switch::after {
+        transform: translateX((4.5rem - $size));
+        background-color: $prime;
     }
 }
 

@@ -28,7 +28,7 @@ export const ToggleSwitch: FunctionComponent<{
     disabled = disabled ?? false
 
     return (
-        <label class={styles.toggle} for={id}>
+        <label class={styles.toggle} for={id} disabled={disabled}>
             { children }
             <input type="checkbox" disabled={disabled} id={id} onChange={e => onChanged ? onChanged(e.currentTarget.checked) : undefined} checked={checked} />
             <span class={styles.switch}/>
