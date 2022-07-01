@@ -1,0 +1,123 @@
+
+@import '../var';
+
+.container {
+    height: 100%;
+    padding: 4rem;
+
+    .caption {
+        font-weight: 400;
+        font-size: 4.2rem;
+    }
+
+    .subtitle {
+        font-weight: 400;
+        font-size: 2.6rem;
+        color: rgba(0, 0, 0, 0.65);
+    }
+
+    h2 {
+        font-weight: 300;
+    }
+
+    .actions {
+        padding-top: 2rem;
+
+
+        button:not(:last-child) {
+            margin-bottom: 4rem;
+        }
+    }
+}
+
+button.action {
+    appearance: none;
+    border: none;
+    background-color: #f3f3f3;
+    border-radius: 1rem;
+    width: 100%;
+    font-size: 1.6rem;
+    padding: 1rem 1.5rem 0.5rem 5rem;
+    text-align: left;
+    cursor: pointer;
+    filter: drop-shadow(2px 2px 2px #f3f3f3);
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+
+    &:hover {
+        background-color: #dbdbdb;
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 0.5rem;
+        background-color: $prime;
+    }
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        left: 0.5rem;
+        bottom: 1rem;
+        width: 3.5rem;
+        background-image: var(--mn-action-icon-src);
+        background-repeat: no-repeat;
+        background-size: contain;
+        background-position: center;
+    }
+
+    h3.main-content {
+        font-weight: 500;
+        font-size: inherit;
+        padding: 0 0 0.5rem 0;
+        margin: 0;
+    }
+
+    span.description {
+        font-size: inherit;
+        margin-bottom: 1rem;
+        display: inline-block;
+    }
+
+    span.hover-arrow {
+        position: absolute;
+        width: 1.5rem;
+        height: 1.5rem;
+        // background-color: black;
+        top: calc(50% - (1.5rem/2));
+        right: 5rem;
+
+        &::after, &::before {
+            position: absolute;
+            content: "";
+            top: 50%;
+            left: 105%;
+            width: 1.5rem;
+            height: 0.3rem;
+            border-radius: 1rem;
+            transform: translate(-1rem, -50%);
+            transform-origin: right center;
+            transition: all 250ms ease-in-out;
+            background-color: rgba(0, 0, 0, 0.65);
+            opacity: 0;
+        }
+
+    }
+    &:hover span.hover-arrow {
+        &::after, &::before {
+            opacity: 1;
+        }
+        &::before {
+            transform: translate(0, -40%) rotate(30deg);
+        }
+        &::after {
+            transform: translate(0, -60%) rotate(-30deg);
+        }
+    }
+}
