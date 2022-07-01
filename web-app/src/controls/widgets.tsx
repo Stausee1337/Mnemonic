@@ -3,16 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
 import { UsePopperState } from "@restart/ui/usePopper"
-import { classNames, makeId } from "../utils";
+import { makeId } from "../utils";
 import styles from "./controls.module.scss";
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
+
+import checkIcon from "../icons/check2.svg";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
     <button class={styles.button} onClick={props.onClick}>{props.children}</button>;
-
-export const Box: FunctionComponent<{ width?: number }> = (props) => 
-    <div class={styles.box} style={{width: props.width ? `${props.width}rem` : '100%' }}>{props.children}</div>
 
 export const ToggleSwitch: FunctionComponent<{
     onChanged?: (checked: boolean) => void,
@@ -178,3 +177,24 @@ export const TooltipButton: FunctionComponent<{
     );
 }
 
+export const Checkbox: FunctionComponent<{
+    onChanged?: (checked: boolean) => void,
+    checked?: boolean,
+    disabled?: boolean
+}> = ({
+    checked,
+    children,
+    onChanged,
+    disabled
+}) => {
+    let id = useMemo(() => makeId(), []);
+    disabled = disabled ?? false
+
+    return (
+        <label class={styles.checkbox} style={{ '--mn-tick-icon-src': `url("${checkIcon}")` }} for={id} disabled={disabled}>
+            { children }
+            <input type="checkbox" disabled={disabled} id={id} onChange={e => onChanged ? onChanged(e.currentTarget.checked) : undefined} checked={checked} />
+            <span class={styles.check}/>
+        </label>
+    ) 
+}

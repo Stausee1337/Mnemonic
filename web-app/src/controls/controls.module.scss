@@ -85,6 +85,54 @@ label.toggle {
     }
 }
 
+label.checkbox {
+    display: inline-block;
+    padding: 0 0 0 2.8rem;
+    margin: 0 0 1rem 0;
+    position: relative;
+    height: 2.2rem;
+    line-height: 2.2rem;
+    cursor: pointer;
+    overflow: hidden;
+
+    input {
+        position: fixed;
+        top: -100px;
+        left: -100px;
+    }
+
+    span.check {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 2.2rem;
+        width: 2.2rem;
+        border-radius: 0.5rem;
+        display: block;
+        background-color: #f3f3f3;
+        border: 1px solid $gray;
+
+        &::before {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            -webkit-mask: var(--mn-tick-icon-src) no-repeat 100% 50%/100% 100%;
+            mask: var(--mn-tick-icon-src) no-repeat 100% 50%/100% 100%;
+        }
+    }
+
+    input:focus + span.check {
+        border: 1px solid $prime;
+    }
+
+    input:checked + span.check::before {
+        content: "";
+    }
+}
+
 div.slider-container {
     height: 5rem;
     width: 24rem;

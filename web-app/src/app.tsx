@@ -2,7 +2,7 @@ import { FunctionComponent } from 'preact';
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
 import { WelcomePage } from './components/welcome';
-import { Header, Switch, Case } from './controls'
+import { Switch, Case } from './controls'
 import { NotificationProvider } from './notification';
 import { ConfigData } from './types';
 
