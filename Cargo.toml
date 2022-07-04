@@ -23,7 +23,10 @@ features = ["auto-initialize"]
 [dependencies.windows]
 version = "0.37.0"
 features = [
-    "Win32_UI_WindowsAndMessaging"
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_UI_Controls"
 ]
 
 [build-dependencies]

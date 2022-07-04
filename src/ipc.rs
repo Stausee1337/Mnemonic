@@ -5,7 +5,7 @@ use serialize_to_javascript::Serialized;
 use tauri_runtime::{
     window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch, Runtime, RuntimeHandle, EventLoopProxy
 };
-use tauri_runtime_wry::Wry;
+use tauri_runtime_wry::{Wry, EventProxy};
 
 use crate::{events::EventLoopMessage, mnemonic, commands};
 
@@ -129,7 +129,7 @@ pub struct Invoke {
     pub resolver: InvokeResolver
 }
 
-fn invoke_handler(invoke: Invoke) {
+fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: Invoke) {
     let cmd = invoke.message.command.as_str();
     match cmd {
         "testFn" => {
@@ -143,6 +143,12 @@ fn invoke_handler(invoke: Invoke) {
         }
         "getWordlist" => {
             commands::get_wordlist(invoke);
+        }
+        "windowDragMove" => {
+            commands::window_drag_move(window, invoke);
+        }
+        "windowShowSysMenu" => {
+            commands::window_show_sys_menu(proxy, invoke);
         }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));
@@ -170,12 +176,12 @@ fn handle_invoke_payload(window: Window, payload: IpcPayload, runtime_handle: &R
             };
 
             let resolver = InvokeResolver {
-                window,
+                window: window.clone(),
                 callback: payload.callback,
                 error: payload.error
             };
             let invoke = Invoke { message, resolver };
-            invoke_handler(invoke);
+            invoke_handler(window, event_proxy, invoke);
         }
     }
 }
