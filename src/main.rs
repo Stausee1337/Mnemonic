@@ -17,7 +17,7 @@ use tauri_runtime::{
 use tauri_utils::{config::{WindowUrl, WindowConfig,}, Theme};
 use url::Url;
 
-use crate::events::EventLoopMessage;
+use crate::{events::EventLoopMessage, ipc::Channels};
 
 fn create_window_config() -> WindowConfig {
     WindowConfig {
@@ -68,6 +68,7 @@ fn main() {
     win32::set_icon_from_resource(hwnd, 1).map_err(|_| "seticon failed").unwrap();
     println!("{:#016x}", hwnd.0);
 
+    let channels = Channels::new();
     let mut initialized = false;
     runtime.run(move |event| match event {
         RunEvent::Exit => {
@@ -84,6 +85,9 @@ fn main() {
                 }
                 EventLoopMessage::ShowSysMenu { x, y } => {
                     let _ = win32::show_sys_menu(hwnd, x, y);
+                }
+                EventLoopMessage::EstablishChannel(req) => {
+                    let _ = channels.open_channel(&req.0, detached.clone(), req.1);
                 }
             }
         }

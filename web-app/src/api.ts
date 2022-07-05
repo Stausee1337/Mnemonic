@@ -1,3 +1,5 @@
+import { Observable } from "rxjs";
+
 
 const event = new Event('application-init');
 
@@ -15,6 +17,7 @@ type Handles = { callback: Handle, error: Handle }
 export interface IRustInterface {
     sendIPCMessage: (rawMessage: string) => void;
     ipcHandler: IPCHandler;
+    onChannelEvent(listener: (event: { type: "accept" | "message" }) => void): void;
 
     _ready: boolean;
     _update(changes: IRustInterface): void;
@@ -30,6 +33,9 @@ export const rustInterface: IRustInterface = <IRustInterface>{
     }
 };
 
+function randomId(): number {
+    return window.crypto.getRandomValues(new Uint32Array(1))[0];
+}
 
 export async function callRustCommand<R>(name: string, args: any[]): Promise<R> {
     if (!rustInterface._ready) {
@@ -50,6 +56,25 @@ export async function callRustCommand<R>(name: string, args: any[]): Promise<R> 
     return await prom;
 }
 
+async function rustOpenChannel(name: string): Promise<number> {
+    let id = randomId();
+    await callRustCommand("establishChannel", [name, id]);
+    return id;
+}
+
+export function establishChannel<T>(name: string): Observable<T> {
+    return new Observable(subscriber =>  {
+        rustOpenChannel(name).then(id => {
+            rustInterface.onChannelEvent(event => {
+                switch (event.type) {
+                    case "accept":
+                        
+                        break;
+                }
+            })
+        })
+    })
+}
 
 export function initializeApi() {
     (<any>window)['RustInterface'] = rustInterface

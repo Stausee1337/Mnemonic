@@ -1,6 +1,8 @@
-use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::{Mutex, Arc}};
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, value::RawValue};
+
 use serialize_to_javascript::Serialized;
 use tauri_runtime::{
     window::{DetachedWindow}, webview::WebviewIpcHandler, Dispatch, Runtime, RuntimeHandle, EventLoopProxy
@@ -64,7 +66,7 @@ impl InvokeResolver {
         );
     }
 
-    fn return_response(
+    pub fn return_response(
         window: Window,
         response: InvokeResponse,
         success_callback: CallbackFn,
@@ -129,6 +131,118 @@ pub struct Invoke {
     pub resolver: InvokeResolver
 }
 
+type WindowEventListenersMap = Mutex<HashMap<String, Arc<Channel>>>;
+type ChannelIdentifier<'a> = (u32, u16, u16, &'a [u8; 8]);
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ChannelHandshakeRequest(pub String, pub CallbackFn);
+
+#[derive(Serialize)]
+pub struct ChannelMessage<'a> {
+    id: ChannelIdentifier<'a>,
+    data: Option<Value>,
+    error: Option<Value>
+}
+
+pub struct Channel {
+    id: uuid::Uuid,
+    window: Window
+}
+
+impl Channel {
+    pub fn new(
+        id: uuid::Uuid,
+        window: Window,
+        response_ch: usize
+    ) -> Self {
+        let result = Self { id, window };
+        result.accept_request(response_ch);
+        result
+    }
+
+    fn accept_request(&self, response_ch: usize) {
+        Self::send_message(serde_json::json!({
+            "type": "accept",
+            "token": response_ch,
+            "acceptId": self.id.as_fields()
+        }), &self.window)
+    }
+
+    fn send_message(value: Value, window: &Window) {
+        let script = serialize_js_with(&value, |arg| {
+            format!(
+                r"
+            window.ipcHandler._respondChannelMessage({arg});
+                ",
+                arg = arg
+            )
+        });
+        if let Ok(script) = script {
+            let _ = window.dispatcher.eval_script(script);
+        }
+    }
+
+    pub fn send<T: Serialize>(&self, data: T) {
+        Self::send_message(serde_json::json!({
+            "type": "message",
+            "channelId": self.id.as_fields(),
+            "data": data,
+            "error": null
+        }), &self.window)
+    }
+
+    pub fn send_error<T: Serialize>(&self, error: T) {
+        Self::send_message(serde_json::json!({
+            "type": "message",
+            "channelId": self.id.as_fields(),
+            "data": null,
+            "error": error
+        }), &self.window)
+    }
+}
+
+pub struct Channels {
+    channel_items: WindowEventListenersMap
+}
+
+impl Channels {
+    pub fn new() -> Self {
+        Self { channel_items: Mutex::new(HashMap::default()) }
+    }
+    
+    pub fn open_channel(
+        &self, 
+        name: &str, 
+        window: Window,
+        response_id: CallbackFn
+    ) -> Result<(), String> {
+        let mut items = self.channel_items
+            .lock()
+            .unwrap();
+        if items.contains_key(name) {
+            return Err("Channel was already opened".to_string());
+        }
+        items.insert(
+            name.to_string(),
+            Arc::new(Channel::new (
+                uuid::Uuid::new_v4(),
+                window,
+                response_id.0
+            ))
+        );
+        
+        Ok(())
+    }
+
+    pub fn get_channel(&self, name: &str) -> Option<Arc<Channel>> {
+        self.channel_items
+            .lock()
+            .unwrap()
+            .get(name)
+            .map(|c| c.clone())
+    }
+}
+
 fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: Invoke) {
     let cmd = invoke.message.command.as_str();
     match cmd {
@@ -160,13 +274,37 @@ fn handle_invoke_payload(window: Window, payload: IpcPayload, runtime_handle: &R
     let event_proxy = runtime_handle.create_proxy();
     match payload.command.as_str() {
         "setInitialized" => {  // Application Initialized
-            let resolver = InvokeResolver {
-                window,
-                callback: payload.callback,
-                error: payload.error
-            };
             let _ = event_proxy.send_event(EventLoopMessage::WebAppInit);
-            resolver.resolve(Value::Null);
+            InvokeResolver::return_response(
+                window,
+                InvokeResponse::Ok(Value::Null),
+                payload.callback, 
+                CallbackFn(0)
+            );
+        },
+        "establishChannel" => {
+            match deserialize::<ChannelHandshakeRequest>(&payload.inner) {
+                Ok(data) => {
+                    let _ = event_proxy.send_event(
+                        EventLoopMessage::EstablishChannel(data)
+                    );
+
+                    InvokeResolver::return_response(
+                        window,
+                        InvokeResponse::Ok(Value::Null),
+                        payload.callback, 
+                        payload.error
+                    );
+                }
+                Err(err) => {
+                    InvokeResolver::return_response(
+                        window,
+                        InvokeResponse::Err(InvokeError(Value::String(err))),
+                        payload.callback, 
+                        payload.error
+                    );
+                }
+            }
         }
         _ => {
             let message = InvokeMessage { 
@@ -283,4 +421,8 @@ pub fn get_argument<'a, D: Deserialize<'a>>(value: &'a Value, resolver: InvokeRe
             None
         }
     }
+}
+
+pub fn deserialize<'a, D: Deserialize<'a>>(value: &'a Value) -> Result<D, String> {
+    D::deserialize(value).map_err(|e| e.to_string())
 }
