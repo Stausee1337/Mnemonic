@@ -78,7 +78,6 @@ impl InvokeResolver {
                 Err(e) => format_callback(error_callback, &e.to_string())
                     .expect("unable to serialze response")
             };
-        // println!("{}", callback_string);
         let _ = window.dispatcher.eval_script(&callback_string);
     }
 }
@@ -161,14 +160,14 @@ impl Channel {
     }
 
     fn accept_request(&self, response_ch: usize) {
-        Self::send_message(serde_json::json!({
+        Self::send(serde_json::json!({
             "type": "accept",
             "token": response_ch,
             "acceptId": self.id.as_fields()
         }), &self.window)
     }
 
-    fn send_message(value: Value, window: &Window) {
+    fn send(value: Value, window: &Window) {
         let script = serialize_js_with(&value, |arg| {
             format!(
                 r"
@@ -182,8 +181,9 @@ impl Channel {
         }
     }
 
-    pub fn send<T: Serialize>(&self, data: T) {
-        Self::send_message(serde_json::json!({
+    #[allow(dead_code)]
+    pub fn send_message<T: Serialize>(&self, data: T) {
+        Self::send(serde_json::json!({
             "type": "message",
             "channelId": self.id.as_fields(),
             "data": data,
@@ -191,13 +191,22 @@ impl Channel {
         }), &self.window)
     }
 
+    #[allow(dead_code)]
     pub fn send_error<T: Serialize>(&self, error: T) {
-        Self::send_message(serde_json::json!({
+        Self::send(serde_json::json!({
             "type": "message",
             "channelId": self.id.as_fields(),
             "data": null,
             "error": error
         }), &self.window)
+    }
+
+    #[allow(dead_code)]
+    pub fn send_close(&self) {
+        Self::send(serde_json::json!({
+            "type": "close",
+            "channelId": self.id.as_fields()
+        }), &self.window);
     }
 }
 
@@ -216,12 +225,12 @@ impl Channels {
         window: Window,
         response_id: CallbackFn
     ) -> Result<(), String> {
+        if let Some(channel) = self.get_channel(name) {
+            channel.send_close();
+        }
         let mut items = self.channel_items
             .lock()
             .unwrap();
-        if items.contains_key(name) {
-            return Err("Channel was already opened".to_string());
-        }
         items.insert(
             name.to_string(),
             Arc::new(Channel::new (
@@ -234,6 +243,7 @@ impl Channels {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_channel(&self, name: &str) -> Option<Arc<Channel>> {
         self.channel_items
             .lock()
@@ -241,13 +251,50 @@ impl Channels {
             .get(name)
             .map(|c| c.clone())
     }
+
+    pub fn get_channel_by_id(&self, id: uuid::Uuid) -> Option<Arc<Channel>> {
+        self.channel_items
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(_, val)| val.id == id)
+            .map(|(_, val)| val.clone())
+    }
+}
+
+fn ipc_close_channel(proxy: EventProxy<EventLoopMessage>, invoke: Invoke) -> Option<()> {
+    fn to_u8(value: &Value) -> u8 {
+        u8::try_from(value.as_u64().unwrap()).unwrap()
+    }
+    
+    let arguments = deserialize_arguments(invoke.clone())?
+        .get(0)
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .to_owned();
+    
+    let vec2 = arguments[3].as_array().unwrap();
+    let uuid = uuid::Uuid::from_fields(
+        u32::try_from(arguments.get(0).unwrap().to_owned().as_u64().unwrap()).unwrap(),
+        u16::try_from(arguments.get(1).unwrap().to_owned().as_u64().unwrap()).unwrap(),
+        u16::try_from(arguments.get(2).unwrap().to_owned().as_u64().unwrap()).unwrap(),
+        &[to_u8(&vec2[0]), to_u8(&vec2[1]), to_u8(&vec2[2]), to_u8(&vec2[3]),
+        to_u8(&vec2[4]), to_u8(&vec2[5]), to_u8(&vec2[6]), to_u8(&vec2[7])]
+    );
+
+    let _ = proxy.send_event(EventLoopMessage::CloseChannel(uuid));
+
+    invoke.resolver.resolve(Value::Null);
+
+    Some(())
 }
 
 fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: Invoke) {
     let cmd = invoke.message.command.as_str();
     match cmd {
-        "testFn" => {
-            invoke.resolver.resolve(1337);
+        "closeChannel" => {
+            ipc_close_channel(proxy, invoke);
         }
         "generateMnemonicPhrase" => {
             mnemonic::generate_mnemonic_phrase(invoke);

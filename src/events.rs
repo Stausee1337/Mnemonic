@@ -4,5 +4,10 @@ use crate::ipc::ChannelHandshakeRequest;
 pub enum EventLoopMessage {
     WebAppInit,
     ShowSysMenu { x: i32, y: i32 },
-    EstablishChannel(ChannelHandshakeRequest)
+    EstablishChannel(ChannelHandshakeRequest),
+    CloseChannel(uuid::Uuid),
+
+    WindowFocus,
+    WindowBlur,
+    WindowMinimize
 }

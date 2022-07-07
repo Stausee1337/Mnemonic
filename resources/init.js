@@ -22,6 +22,10 @@ const ipcHandler = (function () {
         registerObject.resolver.call(undefined, object); // Invoke via call method to avoid injecting some kind of weird this refrence
     }
 
+    function _respondChannelMessage(message) {
+        window.channel.next(message);
+    }
+
     function genHandles() {
         return {
             callback: handlerId++,
@@ -41,7 +45,7 @@ const ipcHandler = (function () {
         });
         return handles;
     }
-    return { _dispatchResolver, registerResolver };
+    return { _dispatchResolver, _respondChannelMessage, registerResolver };
 })();
 window.ipcHandler = ipcHandler;
 

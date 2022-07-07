@@ -45,3 +45,7 @@ export function useForceUpdate(): () => void {
 
     return () => setter(value + 1);
 }
+
+export function nullOrUndefined(value: any): boolean {
+    return value === undefined || value === null;
+}

@@ -11,7 +11,7 @@ use tauri_runtime_wry::{Wry};
 use tauri_runtime::{
     Runtime, RunEvent,
     window::{PendingWindow},
-    webview::{WebviewAttributes}, Dispatch
+    webview::{WebviewAttributes}, Dispatch, RuntimeHandle
 };
 
 use tauri_utils::{config::{WindowUrl, WindowConfig,}, Theme};
@@ -64,9 +64,9 @@ fn main() {
     pending.webview_attributes.initialization_scripts.push(include_str!("../resources/init.js").to_string());
     let detached = runtime.create_window(pending).unwrap();
 
-    let hwnd = detached.dispatcher.hwnd().map_err(|_| "Couldn't get hwnd").unwrap();
-    win32::set_icon_from_resource(hwnd, 1).map_err(|_| "seticon failed").unwrap();
-    println!("{:#016x}", hwnd.0);
+    let hwnd = detached.dispatcher.hwnd().expect("Couldn't get hwnd");
+    win32::set_icon_from_resource(hwnd, 1).expect("seticon failed");
+    win32::install_event_hook(hwnd, runtime.handle().create_proxy());
 
     let channels = Channels::new();
     let mut initialized = false;
@@ -79,7 +79,7 @@ fn main() {
                 EventLoopMessage::WebAppInit => {
                     if !initialized {
                         let _ = detached.dispatcher.show();
-                        win32::window_enable_visual_styles(hwnd).map_err(|_| "Couldnt make window borderless").unwrap();
+                        win32::window_enable_visual_styles(hwnd).expect("Couldnt make window borderless");
                         initialized = true;
                     }
                 }
@@ -88,6 +88,27 @@ fn main() {
                 }
                 EventLoopMessage::EstablishChannel(req) => {
                     let _ = channels.open_channel(&req.0, detached.clone(), req.1);
+                }
+                EventLoopMessage::CloseChannel(id) => {
+                    if let Some(channel) = channels.get_channel_by_id(id) {
+                        channel.send_close();                    
+                        println!("Channel close sent");
+                    }
+                }
+                EventLoopMessage::WindowFocus => {
+                    if let Some(channel) = channels.get_channel("window-events") {
+                        channel.send_message("focus");
+                    }
+                }
+                EventLoopMessage::WindowBlur => {
+                    if let Some(channel) = channels.get_channel("window-events") {
+                        channel.send_message("blur");
+                    }
+                }
+                EventLoopMessage::WindowMinimize => {
+                    if let Some(channel) = channels.get_channel("window-events") {
+                        channel.send_message("minimized");
+                    }
                 }
             }
         }

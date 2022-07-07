@@ -7,7 +7,6 @@ use pyo3::{prelude::*, types::{PyDict, PyTuple}};
 lazy_static! {
     static ref CONTEXT: Py<PyDict> = {
         Python::with_gil(|py| {
-            // let locals = PyDict::new(py);
             let module = PyModule::from_code(
                 py, 
                 include_str!("../resources/crypto.py"), 
@@ -16,8 +15,6 @@ lazy_static! {
             ).unwrap();
             module.add_function(wrap_pyfunction!(get_wordlist, module).unwrap()).unwrap();
             let globals = module.dict();
-            // locals.set_item("wordlist", wordlist2).unwrap();
-            println!("{}", globals.keys().to_string());
             globals.into()
         })
     };
