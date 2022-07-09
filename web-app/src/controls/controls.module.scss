@@ -226,3 +226,14 @@ div.arrow {
     &.right { right: -4px; }
 }
 
+div.title-bar {
+    background-color: #d7dade;
+    display: grid;
+    grid-template-columns: 3rem auto 9.2rem;
+
+    div.title {
+        text-align: center;
+        line-height: 3.6rem;
+    }
+}
+

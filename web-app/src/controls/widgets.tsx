@@ -198,3 +198,16 @@ export const Checkbox: FunctionComponent<{
         </label>
     ) 
 }
+
+export const TitleBar: FunctionComponent = () => {
+
+    return (
+        <div class={styles['title-bar']}>
+            <div class={styles.menu}></div>
+            <div class={styles.title}>Get Started - Mnemoinc</div>
+            <div class={styles['window-controls']}>
+                
+            </div>
+        </div>
+    );
+}
