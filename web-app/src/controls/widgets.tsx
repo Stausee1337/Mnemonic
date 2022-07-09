@@ -3,9 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
 import { UsePopperState } from "@restart/ui/usePopper"
-import { makeId } from "../utils";
+import { classNames, makeId, nullOrUndefined } from "../utils";
 import styles from "./controls.module.scss";
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
+import { Icon } from "../icons";
+import { establishChannel } from "../api";
+import { useNavigator } from "./naviagtion";
+import { Rust } from "../interface";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -197,14 +201,76 @@ export const Checkbox: FunctionComponent<{
     ) 
 }
 
+type ChannelObject = {
+    onEvent?: (event: WindowEvent) => void,
+    removeEventListener: () => void
+};
+
+type WindowEvent = "minimize" | "focus" | "blur";
+
 export const TitleBar: FunctionComponent = () => {
+    const [active, setActive] = useState(true);
+
+    useEffect(() => {
+        () => { channel.removeEventListener(); }
+    }, []);
+
+    const channel = useMemo<ChannelObject>(() => {
+        const returnObject: ChannelObject = {
+            removeEventListener: null!
+        }
+
+        const subscribtion = establishChannel<WindowEvent>("window-events").subscribe({
+            next(event) {
+                if (!nullOrUndefined(returnObject.onEvent))
+                    returnObject.onEvent!(event)
+            },
+        });
+
+        returnObject.removeEventListener = subscribtion.unsubscribe.bind(subscribtion);
+        return returnObject;
+    }, []);
+
+    channel.onEvent = event => {
+        switch (event) {
+            case "blur":
+                setActive(false);
+                break;
+            case "focus":
+                setActive(true);
+                break;
+        } 
+    }
+
+    const mouseDown = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+        console.log(event.target);
+        if ((event.target! as HTMLElement).hasAttribute('drag-region')) {
+            if (event.button === 0) {
+                Rust.windowDragMove();
+            } else if (event.button === 2) {
+                Rust.windowShowSysMenu(event.screenX, event.screenY);
+            }
+        }
+
+    }
 
     return (
-        <div class={styles['title-bar']}>
-            <div class={styles.menu}></div>
+        <div onMouseDown={mouseDown} class={classNames({
+            [styles['title-bar']]: true,
+            [styles['window-active']]: active,
+            [styles['window-inactive']]: !active
+        })} drag-region>
+            <div class={styles.menu}>
+                <button disabled={useNavigator()!.hasNext()} class={styles['menu-back']}>
+                    <Icon name="arrow-back"/>
+                </button>
+            </div>
             <div class={styles.title}>Get Started - Mnemoinc</div>
             <div class={styles['window-controls']}>
-                
+                <div><Icon name="minimize"/></div>
+                <div style={{ '--hover-bg-color': '#d11326', '--hover-ic-color': 'white' }}>
+                    <Icon name="close"/>
+                </div>
             </div>
         </div>
     );

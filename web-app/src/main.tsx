@@ -7,5 +7,3 @@ import { Rust } from './interface';
 initializeApi();
 render(<App />, document.getElementById('app')!);
 Rust.setInitialized();
-
-establishChannel("window-events").subscribe(console.log)
