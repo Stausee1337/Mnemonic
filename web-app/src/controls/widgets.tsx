@@ -7,8 +7,6 @@ import { makeId } from "../utils";
 import styles from "./controls.module.scss";
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
 
-import checkIcon from "../icons/check2.svg";
-
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
     <button class={styles.button} onClick={props.onClick}>{props.children}</button>;
@@ -191,7 +189,7 @@ export const Checkbox: FunctionComponent<{
     disabled = disabled ?? false
 
     return (
-        <label class={styles.checkbox} style={{ '--mn-tick-icon-src': `url("${checkIcon}")` }} for={id} disabled={disabled}>
+        <label class={styles.checkbox} for={id} disabled={disabled}>
             { children }
             <input type="checkbox" disabled={disabled} id={id} onChange={e => onChanged ? onChanged(e.currentTarget.checked) : undefined} checked={checked} />
             <span class={styles.check}/>

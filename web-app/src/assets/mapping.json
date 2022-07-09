@@ -1,0 +1,14 @@
+{
+    "arrow-back": 60000,
+    "close": 60001,
+    "copy": 60002,
+    "generate-password": 60003,
+    "minimize": 60004,
+    "option-slider": 60005,
+    "printer": 60006,
+    "restore-password": 60007,
+    "settings-gear": 60008,
+    "tick-thin": 60009,
+    "tick": 60010,
+    "update": 60011
+}

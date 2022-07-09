@@ -4,11 +4,8 @@ import styles from "./generate.module.scss"
 import { random, classNames } from "../utils"
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Rust } from "../interface"
-import copyIcon from "../icons/copy.svg"
-import updateIcon from "../icons/update.svg"
-import printerIcon from "../icons/printer.svg"
-import checkIcon from "../icons/check.svg"
 import { useNotifier } from "../notification";
+import { Icon } from "../icons";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
@@ -143,16 +140,16 @@ const ActionSidebar: FunctionComponent<{
     return (
         <div class={styles['action-sidebar']}>
             <TooltipButton onClick={copyHandler} tooltip="Copy Password">
-                <img src={copyIcon}/>
+                <Icon width={45} name="copy"/>
             </TooltipButton>
             <TooltipButton onClick={updateHandler} tooltip="Generate Phrase">
-                <img src={updateIcon}/>
+                <Icon width={45} name="update"/>
             </TooltipButton>
             <TooltipButton onClick={printHandler} tooltip="Print Mnemonic">
-                <img src={printerIcon}/>
+                <Icon width={45} name="printer"/>
             </TooltipButton>
             <TooltipButton tooltip="Finish and exit">
-                <img src={checkIcon}/>
+                <Icon width={45} name="tick"/>
             </TooltipButton>
         </div>
     );

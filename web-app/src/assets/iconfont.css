@@ -1,0 +1,20 @@
+@font-face {
+    font-family: "iconfont";
+    src: url("./iconfont.ttf") format("truetype");
+}
+
+icon {
+    display: inline;
+}
+
+icon::before {
+    content: attr(data-char);
+    font-family: iconfont !important;
+    font-style: normal;
+    font-weight: normal !important;
+    font-variant: normal;
+    text-transform: none;
+    display: block;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+}

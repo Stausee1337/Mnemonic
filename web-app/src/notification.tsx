@@ -2,6 +2,7 @@ import { createContext, FunctionComponent } from "preact";
 import { useContext, useMemo, useState } from "preact/hooks";
 import { createPortal } from "preact/compat";
 import styles from "./notifications.module.scss"
+import { Icon } from "./icons";
 
 interface NotificationContextObject {
     activeNaviations: NotificationObject[];
@@ -38,7 +39,7 @@ const NotificationArea: FunctionComponent = ({ }) => {
                 return (
                 <div key={config._id!} onAnimationEnd={endTrigger} class={`${styles.notification} ${styles[config.class]} ${styles[fadeOut!]}`}>
                     <h1>{ config.title }</h1>
-                    { config.closeButton ? <span onClick={() => notifications.fadeOut(config)} class={styles['close-button']} /> : null }
+                    { config.closeButton ? <span onClick={() => notifications.fadeOut(config)} class={styles['close-button']} children={<Icon width={16} name="close"/>}/> : null }
                     { config.content ? <article children={config.content} /> : null }
                 </div>);
             }) }

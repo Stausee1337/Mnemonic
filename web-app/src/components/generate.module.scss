@@ -165,11 +165,14 @@ div.controls-container {
     }
 
     div.action-sidebar {
-        fill: gray;
         width: 4.5rem;
         display: flex;
         flex-direction: column;
-        justify-content: space-evenly
+        justify-content: space-evenly;
+
+        button {
+            color: gray;
+        }
     }
 }
 
