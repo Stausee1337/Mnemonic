@@ -1,4 +1,4 @@
-use crate::ipc::ChannelHandshakeRequest;
+use crate::{ipc::ChannelHandshakeRequest, commands::WindowButton};
 
 #[derive(Debug, Clone)]
 pub enum EventLoopMessage {
@@ -6,6 +6,7 @@ pub enum EventLoopMessage {
     ShowSysMenu { x: i32, y: i32 },
     EstablishChannel(ChannelHandshakeRequest),
     CloseChannel(uuid::Uuid),
+    WindowSysCommand(WindowButton),
 
     WindowFocus,
     WindowBlur,

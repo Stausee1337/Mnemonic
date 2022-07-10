@@ -311,6 +311,12 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "windowShowSysMenu" => {
             commands::window_show_sys_menu(proxy, invoke);
         }
+        "windowClose" => {
+            commands::handle_window_buttons(proxy, invoke, commands::WindowButton::Close);
+        }
+        "windowMinimize" => {
+            commands::handle_window_buttons(proxy, invoke, commands::WindowButton::Minimize);
+        }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));
         }

@@ -7,6 +7,7 @@ mod win32;
 
 use std::str::FromStr;
 
+use commands::WindowButton;
 use tauri_runtime_wry::{Wry};
 use tauri_runtime::{
     Runtime, RunEvent,
@@ -94,6 +95,12 @@ fn main() {
                         channel.send_close();                    
                         println!("Channel close sent");
                     }
+                }
+                EventLoopMessage::WindowSysCommand(msg) => {
+                    let _ = match msg {
+                        WindowButton::Close => detached.dispatcher.close(),
+                        WindowButton::Minimize => detached.dispatcher.minimize()
+                    };
                 }
                 EventLoopMessage::WindowFocus => {
                     if let Some(channel) = channels.get_channel("window-events") {

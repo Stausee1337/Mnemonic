@@ -7,4 +7,6 @@ namespace Rust {
     export async function getWordlist(): Promise<string>;
     export async function windowDragMove(): Promise<void>;
     export async function windowShowSysMenu(x: number, y: number): Promise<void>;
+    export async function windowClose(): Promise<void>;
+    export async function windowMinimize(): Promise<void>;
 }

@@ -254,6 +254,10 @@ export const TitleBar: FunctionComponent = () => {
 
     }
 
+    const minimize = () => {
+        Rust.windowMinimize();
+    }
+
     return (
         <div onMouseDown={mouseDown} class={classNames({
             [styles['title-bar']]: true,
@@ -267,8 +271,8 @@ export const TitleBar: FunctionComponent = () => {
             </div>
             <div class={styles.title}>Get Started - Mnemoinc</div>
             <div class={styles['window-controls']}>
-                <div><Icon name="minimize"/></div>
-                <div style={{ '--hover-bg-color': '#d11326', '--hover-ic-color': 'white' }}>
+                <div onClick={minimize}><Icon name="minimize"/></div>
+                <div onClick={() => Rust.windowClose()} style={{ '--hover-bg-color': '#d11326', '--hover-ic-color': 'white' }}>
                     <Icon name="close"/>
                 </div>
             </div>

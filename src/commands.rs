@@ -8,6 +8,11 @@ use tauri_runtime_wry::{Wry, EventProxy};
 use crate::ipc::{Invoke, deserialize_arguments, get_argument};
 use crate::events::EventLoopMessage;
 
+#[derive(Debug, Clone)]
+pub enum WindowButton {
+    Close,
+    Minimize,
+}
 
 fn get_wordlist_impl() -> String {
     include_str!("../resources/wordlist.txt").to_string()
@@ -22,6 +27,23 @@ pub fn window_drag_move(
     invoke: Invoke
 ) {
     let result = window.dispatcher.start_dragging();
+
+    match result {
+        Ok(..) => {
+            invoke.resolver.resolve(Value::Null);
+        }
+        Err(err) => {
+            invoke.resolver.reject(err.to_string());
+        } 
+    }
+}
+
+pub fn handle_window_buttons(
+    proxy: EventProxy<EventLoopMessage>,
+    invoke: Invoke,
+    message: WindowButton,
+) {
+    let result = proxy.send_event(EventLoopMessage::WindowSysCommand(message));
 
     match result {
         Ok(..) => {
