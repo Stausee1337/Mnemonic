@@ -84,3 +84,36 @@ pub fn window_show_sys_menu(
 
     Some(())
 }
+
+fn window_set_title_impl(
+    window: DetachedWindow<EventLoopMessage, Wry<EventLoopMessage>>,
+    title: String
+) -> Result<(), tauri_runtime::Error>{
+    window.dispatcher.set_title(title)
+}
+
+pub fn window_set_title(
+    window: DetachedWindow<EventLoopMessage, Wry<EventLoopMessage>>,
+    invoke: Invoke
+) -> Option<()> {
+    let arguments = deserialize_arguments(invoke.clone())?;
+    let mut iter = arguments.iter();
+    let resolver = invoke.resolver.clone();
+
+    let result = window_set_title_impl(
+        window,
+        get_argument(iter.next()?, resolver.clone())?
+    );
+
+    match result {
+        Ok(..) => {
+            resolver.resolve(Value::Null);
+        }
+        Err(err) => {
+            resolver.reject(err.to_string());
+        } 
+    }
+
+    Some(())
+}
+

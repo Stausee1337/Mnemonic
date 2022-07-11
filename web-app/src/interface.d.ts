@@ -9,4 +9,5 @@ namespace Rust {
     export async function windowShowSysMenu(x: number, y: number): Promise<void>;
     export async function windowClose(): Promise<void>;
     export async function windowMinimize(): Promise<void>;
+    export async function windowSetTitle(title: string): Promise<void>;
 }

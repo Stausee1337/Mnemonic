@@ -220,6 +220,7 @@ export const TitleBar: FunctionComponent = () => {
 
     eventProvider.on<string>("titleChanged", newTitle => {
         setTitle(newTitle);
+        Rust.windowSetTitle(newTitle);
     });
 
     const mouseDown = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {

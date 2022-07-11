@@ -317,6 +317,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "windowMinimize" => {
             commands::handle_window_buttons(proxy, invoke, commands::WindowButton::Minimize);
         }
+        "windowSetTitle" => {
+            commands::window_set_title(window, invoke);
+        }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));
         }
