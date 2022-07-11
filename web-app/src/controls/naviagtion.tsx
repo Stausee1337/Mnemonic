@@ -19,7 +19,8 @@ interface PaginationContextObject {
 interface SwitchObject {
     element: ComponentChildren;
     id: string;
-    index: boolean
+    index: boolean;
+    title: string;
 }
 
 const PaginationContext = createContext<PaginationContextObject>(null!);
@@ -32,7 +33,7 @@ export function useNavigator(): Navigator | null {
     return useContext(PaginationContext).navigator;
 }
 
-export const Case: FunctionComponent<{ id: string, index?: boolean }> = ({ children }) => {
+export const Case: FunctionComponent<{ id: string, title: string, index?: boolean }> = ({ children }) => {
     throw Error()
 }
 
@@ -77,7 +78,6 @@ export const Navigation: FunctionComponent = ({ children }) => {
             },
             hasNext() {
                 const history = pagination.history;
-                console.log(history);
                 return !(history.length <= 1 && history[history.length-1] === index?.id)
             },
             initilized: initilizedObject.promise
@@ -104,6 +104,11 @@ export const Switch: FunctionComponent = ({
     
     const pagination = useContext(PaginationContext);
     pagination.initilize(index);
+
+    useEffect(() => {
+        const _case = cases.find(_case => _case.id === pagination.currentId);
+        document.title = _case?.title ?? "";
+    }, [pagination.currentId])
 
     return (
         <>
@@ -132,6 +137,7 @@ function createCasesFromChildren(
             element: element.props.children,
             id: props.id as string,
             index: (props.index as boolean | undefined) ?? false,
+            title: props.title as string
         })
     })
 

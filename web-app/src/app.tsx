@@ -21,13 +21,13 @@ export const App: FunctionComponent = () => {
                 <TitleBar/>
                 <div id="page-content">
                     <Switch>
-                        <Case id="start-page" index>
+                        <Case id="start-page" title="Get Started - Mnemonic" index>
                             <WelcomePage/>
                         </Case>
-                        <Case id="generate">
+                        <Case id="generate" title="Generate - Mnemonic">
                             <GeneratePage config={config}/>
                         </Case>
-                        <Case id="restore">
+                        <Case id="restore" title="Restore - Mnemonic">
                             <RestorePage/>
                         </Case>
                     </Switch>

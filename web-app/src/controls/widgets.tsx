@@ -10,6 +10,7 @@ import { Icon } from "../icons";
 import { establishChannel } from "../api";
 import { useNavigator } from "./naviagtion";
 import { Rust } from "../interface";
+import { useEventProvider } from "../window";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -210,40 +211,18 @@ type WindowEvent = "minimize" | "focus" | "blur";
 
 export const TitleBar: FunctionComponent = () => {
     const [active, setActive] = useState(true);
+    const [title, setTitle] = useState("");
+    const eventProvider = useEventProvider();
 
-    useEffect(() => {
-        () => { channel.removeEventListener(); }
-    }, []);
+    eventProvider.on<{ active: boolean }>("stateChanged", ({ active }) => {
+        setActive(active);
+    })
 
-    const channel = useMemo<ChannelObject>(() => {
-        const returnObject: ChannelObject = {
-            removeEventListener: null!
-        }
-
-        const subscribtion = establishChannel<WindowEvent>("window-events").subscribe({
-            next(event) {
-                if (!nullOrUndefined(returnObject.onEvent))
-                    returnObject.onEvent!(event)
-            },
-        });
-
-        returnObject.removeEventListener = subscribtion.unsubscribe.bind(subscribtion);
-        return returnObject;
-    }, []);
-
-    channel.onEvent = event => {
-        switch (event) {
-            case "blur":
-                setActive(false);
-                break;
-            case "focus":
-                setActive(true);
-                break;
-        } 
-    }
+    eventProvider.on<string>("titleChanged", newTitle => {
+        setTitle(newTitle);
+    });
 
     const mouseDown = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
-        console.log(event.target);
         if ((event.target! as HTMLElement).hasAttribute('drag-region')) {
             if (event.button === 0) {
                 Rust.windowDragMove();
@@ -269,7 +248,7 @@ export const TitleBar: FunctionComponent = () => {
                     <Icon name="arrow-back"/>
                 </button>
             </div>
-            <div class={styles.title}>Get Started - Mnemoinc</div>
+            <div class={styles.title}>{ title }</div>
             <div class={styles['window-controls']}>
                 <div onClick={minimize}><Icon name="minimize"/></div>
                 <div onClick={() => Rust.windowClose()} style={{ '--hover-bg-color': '#d11326', '--hover-ic-color': 'white' }}>
