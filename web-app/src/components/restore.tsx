@@ -419,6 +419,7 @@ export const RestorePage: FunctionComponent = () => {
     if (!initalized) return null;
     return (
         <>
+            <h1>Restore</h1>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
                     { iterateWords(words.map((_, i) => <Word 

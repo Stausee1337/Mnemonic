@@ -50,15 +50,22 @@ const PasswordSettings: FunctionComponent<{
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <h2>Password Settings</h2>
-            <ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}>Characters</ToggleSwitch>
-            <ToggleSwitch disabled={lod[1]} checked={digits} onChanged={setDigits}>Numbers</ToggleSwitch>
-            <ToggleSwitch disabled={lod[2]} checked={punctuation} onChanged={setPunctuation}>Punctuation</ToggleSwitch>
-            <ToggleSwitch disabled={lod[3]} checked={special} onChanged={setSpecial}>Special Punctuation</ToggleSwitch>
-            <span class={styles['length-indicator']} >{length}</span>
-            <Slider value={length} onChange={setLength} min={8} max={88}/>
-        </div>
+        <>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <h4>Password Settings</h4>
+                <ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}>Characters</ToggleSwitch>
+                <ToggleSwitch disabled={lod[1]} checked={digits} onChanged={setDigits}>Numbers</ToggleSwitch>
+                <ToggleSwitch disabled={lod[2]} checked={punctuation} onChanged={setPunctuation}>Punctuation</ToggleSwitch>
+                <ToggleSwitch disabled={lod[3]} checked={special} onChanged={setSpecial}>Special Punctuation</ToggleSwitch>
+                
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div>
+                    <span class={styles['length-indicator']} >{length}</span>
+                    <Slider value={length} onChange={setLength} min={8} max={88}/>
+                </div>
+            </div>
+        </>
     )
 }
 
@@ -302,6 +309,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
 
     return (
         <>
+            <h1>Generate</h1>
             <div class={styles['generate-grid']}>
                 <div 
                     onAnimationStart={animationHandler} 
