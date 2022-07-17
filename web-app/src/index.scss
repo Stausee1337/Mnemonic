@@ -51,8 +51,6 @@ button, input {
   grid-template-rows: 3.6rem auto;
 
   #page-content {
-    margin: 0 1.5rem;
+    overflow: hidden;
   }
-  // overflow: hidden;
-  // padding-top: 100px;
 }

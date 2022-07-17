@@ -1,0 +1,31 @@
+
+div.router-animation {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 80rem;
+    position: relative;
+
+    &.animating {
+        width: 160rem;
+        grid-template-columns: 80rem 80rem;
+    }
+
+    &.foreward {
+        animation: animate-right 250ms ease-in-out forwards;
+    }
+
+    &.backward {
+        left: -80rem;
+        animation: animate-left 250ms ease-in-out forwards;
+    }
+}
+
+@keyframes animate-right {
+    0% { left: 0;  }
+    100% { left: -80rem; }
+}
+
+@keyframes animate-left {
+    0% { left: -80rem;  }
+    100% { left: 0; }
+}

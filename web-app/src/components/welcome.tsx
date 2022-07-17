@@ -1,7 +1,8 @@
 import { FunctionComponent, VNode } from "preact";
 import styles from "./welcome.module.scss";
-import { Checkbox, useNavigation } from "../controls";
+import { Checkbox, Title } from "../controls";
 import { Icon } from "../icons";
+import { useRouter } from "../router";
 
 export const Action: FunctionComponent<{
     content: string,
@@ -19,7 +20,7 @@ export const Action: FunctionComponent<{
 )
 
 export const WelcomePage: FunctionComponent = () => {
-    const navigate = useNavigation();
+    const history = useRouter()!.history;
 
     return (
         <div class={styles.container}>
@@ -28,10 +29,16 @@ export const WelcomePage: FunctionComponent = () => {
                 <p class={styles.subtitle}>Password Memorizer</p>
             </div>
             <div class={styles.actions}>
-                <Action content="Generate Mnemonic Phrase" icon={<Icon width={35} name="generate-password"/>} onClick={() => navigate('generate')}>
+                <Action 
+                    content="Generate Mnemonic Phrase"
+                    icon={<Icon width={35} name="generate-password"/>} 
+                    onClick={() => history.push('/generate')}>
                     Start by generating a Password-Phrase-Pair to secure your accounts
                 </Action>
-                <Action content="Retrieve Password from Phrase" icon={<Icon width={35} name="restore-password"/>} onClick={() => navigate('restore')}>
+                <Action 
+                    content="Retrieve Password from Phrase"
+                    icon={<Icon width={35} name="restore-password"/>}
+                    onClick={() => history.push('/retrieve')} >
                     Enter your Mnemonic phrase and get back your Password
                 </Action>
             </div>

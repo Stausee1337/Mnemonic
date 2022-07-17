@@ -7,6 +7,8 @@ import { classNames, useForceUpdate, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
 import { useValidation, ValidatorModel } from "../validation";
 import { Button } from "../controls";
+import { NavigationFinished, RouteEvent, useRouter } from "../router";
+import { filter } from "rxjs";
 
 type WordClassType = 'gray' | 'blue' | 'green' | 'red' | 'flushing';
 
@@ -367,18 +369,27 @@ type PassedControlFunctions = {
 };
 
 export const RestorePage: FunctionComponent = () => {
-    const [initalized, setInitalized] = useState(false);
     const [activeIndex, setIndex] = useState(0);
-    const [words, setWords] = useState([""]);
+    const [words, setWords] = useState<string[]>([]);
     const [isSNCMode, setSNC] = useState(false); // SelectedNonCurrent
 
+    const router = useRouter()!;
+
     useEffect(() => {
+        const subscribtion = router.events.pipe(
+            filter((e: RouteEvent): e is NavigationFinished => e instanceof NavigationFinished)
+        ).subscribe({
+            next() {
+                setWords([""]);
+                subscribtion.unsubscribe();
+            }
+        })
+
         Rust.getWordlist().then(data => {
             let wordlist = data.split('\r\n')
             wordlist.pop()
             wordlist = wordlist.sort((a, b) => a.localeCompare(b))
             storeWordlist(wordlist);
-            setInitalized(true);
         }).catch(console.error); // todo: implement global error handler
     }, [])
 
@@ -416,9 +427,8 @@ export const RestorePage: FunctionComponent = () => {
         setSNC(words.length-1 !== idx);
     }
 
-    if (!initalized) return null;
     return (
-        <>
+        <div class={styles.container}>
             <h1>Restore</h1>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
@@ -434,6 +444,6 @@ export const RestorePage: FunctionComponent = () => {
                     <Button>Calculate Password</Button>
                 </div>
             </div>
-        </>
+        </div>
     );
 }

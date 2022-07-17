@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { Rust } from "../interface"
 import { useNotifier } from "../notification";
 import { Icon } from "../icons";
+import { NavigationFinished, RouteEvent, useRouter } from "../router";
+import { filter } from "rxjs";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
@@ -261,19 +263,32 @@ const IntelligentPasswordBox: FunctionComponent<{
 export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     config: initialConfig 
 }) => {
-    const [initialized, setInitialzed] = useState(false);
+    const [initialized, setInitialzed] = useState(0);
     const [wordlist, setWordlist] = useState<string[]>(null!);
     const [password, setPassword] = useState<string>(null!);
     const [config, setConfig] = useState(initialConfig);
     const [animating, setAnimating] = useState(false);
 
+    const router = useRouter()!;
     const notfiy = useNotifier();
 
     useEffect(() => {
+        const subscribtion = router.events.pipe(
+            filter((e: RouteEvent): e is NavigationFinished => e instanceof NavigationFinished)
+        ).subscribe({
+            next() {
+                setInitialzed(1);
+                subscribtion.unsubscribe();
+            }
+        })
+    }, [])
+
+    useEffect(() => {
+        if (initialized !== 1) return;
         Rust.generateMnemonicPhrase(initialConfig).then(data => {
             setWordlist(data.phrase);
             setPassword(data.password);
-            setInitialzed(true);
+            setInitialzed(2);
         }).catch(e => notfiy({
             class: 'error',
             closeButton: true,
@@ -282,14 +297,14 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
             ${e}
             `
         }));
-    }, []);
+    }, [initialized]);
 
     useEffect(() => {
-        if (!initialized) return;
+        if (initialized !== 2) return;
         Rust.fromMnemonicPhrase(wordlist, config).then(data => {
             setPassword(data.password);
         }).catch(console.error);
-    }, [config]);
+    }, [config, initialized]);
 
     useEffect(() => {
         if (animating) {
@@ -308,7 +323,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     
 
     return (
-        <>
+        <div class={styles.container}>
             <h1>Generate</h1>
             <div class={styles['generate-grid']}>
                 <div 
@@ -332,6 +347,6 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 };

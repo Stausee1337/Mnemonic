@@ -3,14 +3,14 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
 import { UsePopperState } from "@restart/ui/usePopper"
-import { classNames, makeId, nullOrUndefined } from "../utils";
-import styles from "./controls.module.scss";
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
-import { Icon } from "../icons";
-import { establishChannel } from "../api";
-import { useNavigator } from "./naviagtion";
-import { Rust } from "../interface";
-import { useEventProvider } from "../window";
+import { classNames, makeId, nullOrUndefined } from "./utils";
+import styles from "./controls.module.scss";
+import { Icon } from "./icons";
+import { Rust } from "./interface";
+import { useEventProvider } from "./window";
+import { useRouter } from "./router";
+import { MemoryHistory, Update } from "history";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -202,16 +202,16 @@ export const Checkbox: FunctionComponent<{
     ) 
 }
 
-type ChannelObject = {
-    onEvent?: (event: WindowEvent) => void,
-    removeEventListener: () => void
-};
-
-type WindowEvent = "minimize" | "focus" | "blur";
+export const Title: FunctionComponent<{ children: string }> = ({ children }) => {
+    document.title = children;
+    return null;
+}
 
 export const TitleBar: FunctionComponent = () => {
     const [active, setActive] = useState(true);
     const [title, setTitle] = useState("");
+    const [buttonDisabled, setDisabled] = useState(true);
+    const router = useRouter()!;
     const eventProvider = useEventProvider();
 
     eventProvider.on<{ active: boolean }>("stateChanged", ({ active }) => {
@@ -221,6 +221,11 @@ export const TitleBar: FunctionComponent = () => {
     eventProvider.on<string>("titleChanged", newTitle => {
         setTitle(newTitle);
         Rust.windowSetTitle(newTitle);
+    });
+
+    eventProvider.on<Update>("routeChanged", () => {
+        const history = router.history as MemoryHistory;
+        setDisabled(history.index <= 0);
     });
 
     const mouseDown = (event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
@@ -245,7 +250,7 @@ export const TitleBar: FunctionComponent = () => {
             [styles['window-inactive']]: !active
         })} drag-region>
             <div class={styles.menu}>
-                <button disabled={useNavigator()!.hasNext()} class={styles['menu-back']}>
+                <button disabled={buttonDisabled} class={styles['menu-back']} onClick={() => router.history.back()}>
                     <Icon name="arrow-back"/>
                 </button>
             </div>

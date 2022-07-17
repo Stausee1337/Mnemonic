@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "preact/hooks";
+import { filter } from "rxjs";
 import { establishChannel } from "./api";
+import { RouteChanged, RouteEvent, useRouter } from "./router";
 import { nullOrUndefined } from "./utils";
 
 type ListenerType<T> = (event: T) => void;
@@ -12,6 +14,7 @@ type WindowEvent = "minimized" | "focus" | "blur";
 
 export function useEventProvider(): EventProvider {
     const listenersMap = useMemo(() => new Map<string, ListenerType<any>>(), []);
+    const router = useRouter();
 
     useEffect(() => {
         let active = true;
@@ -74,6 +77,19 @@ export function useEventProvider(): EventProvider {
             console.warn("disconnection mutation observer");
             observer.disconnect();
         }
+    }, []);
+
+    useEffect(() => {
+        router?.events.pipe(
+            filter((e: RouteEvent): e is RouteChanged => e instanceof RouteChanged)
+        ).subscribe({
+            next(value) {
+                const listener = listenersMap.get("routeChanged");
+                if (!nullOrUndefined(listener)) {
+                    listener!(value);
+                }
+            }
+        })
     }, [])
 
     return {

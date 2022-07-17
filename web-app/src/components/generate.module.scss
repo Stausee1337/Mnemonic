@@ -1,5 +1,10 @@
 @import '../var';
 
+.container {
+    height: 100%;
+    margin: 0 1.5rem;
+}
+
 div.generate-grid {
     display: grid;
     grid-template-rows: 20.7rem 9rem auto;

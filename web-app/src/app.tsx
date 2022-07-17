@@ -1,9 +1,11 @@
 import { FunctionComponent } from 'preact';
+
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
 import { WelcomePage } from './components/welcome';
-import { Switch, Case, TitleBar, Navigation } from './controls'
+import { TitleBar } from './controls';
 import { NotificationProvider } from './notification';
+import { RouterOutlet, RouterProvider } from './router';
 import { ConfigData } from './types';
 
 export const App: FunctionComponent = () => {
@@ -17,22 +19,26 @@ export const App: FunctionComponent = () => {
     
     return (
         <NotificationProvider>
-            <Navigation>
+            <RouterProvider>
                 <TitleBar/>
                 <div id="page-content">
-                    <Switch>
-                        <Case id="start-page" title="Get Started - Mnemonic" index>
-                            <WelcomePage/>
-                        </Case>
-                        <Case id="generate" title="Generate - Mnemonic">
-                            <GeneratePage config={config}/>
-                        </Case>
-                        <Case id="restore" title="Restore - Mnemonic">
-                            <RestorePage/>
-                        </Case>
-                    </Switch>
+                    <RouterOutlet>
+                        {   path => {
+                                switch (path) {
+                                    case '/':
+                                        return { element: <WelcomePage/> };
+                                    case '/generate':
+                                        return { element: <GeneratePage config={config}/> };
+                                    case '/retrieve':
+                                        return { element: <RestorePage/>}
+                                    default:
+                                        return { element: <h1>Not Found</h1> };
+                                }
+                            } 
+                        }
+                    </RouterOutlet>
                 </div>
-            </Navigation>
+            </RouterProvider>
         </NotificationProvider>
     )
 }
