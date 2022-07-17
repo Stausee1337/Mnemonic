@@ -429,7 +429,7 @@ export const RestorePage: FunctionComponent = () => {
 
     return (
         <div class={styles.container}>
-            <h1>Restore</h1>
+            <h3>Restore</h3>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
                     { iterateWords(words.map((_, i) => <Word 

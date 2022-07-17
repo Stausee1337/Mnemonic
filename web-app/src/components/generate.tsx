@@ -324,7 +324,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
 
     return (
         <div class={styles.container}>
-            <h1>Generate</h1>
+            <h3>Generate</h3>
             <div class={styles['generate-grid']}>
                 <div 
                     onAnimationStart={animationHandler} 
