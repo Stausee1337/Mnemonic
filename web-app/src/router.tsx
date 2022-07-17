@@ -212,16 +212,6 @@ export const RouterOutlet: FunctionComponent<{
         })
     }, []);
 
-    /*useEffect(() => {
-        if (nullOrUndefined(container.current)) {
-            return;
-        }
-        if (container.current!.isEmpty()) {
-            const result = children(router.location.pathname);
-            container.current!.attachElement(result.element);
-        }
-    }, [container.current]);*/
-
     const route = useMemo<VNode>(() => {
         return children(router.location.pathname).element;
     }, [])

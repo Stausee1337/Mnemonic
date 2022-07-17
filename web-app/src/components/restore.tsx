@@ -369,8 +369,8 @@ type PassedControlFunctions = {
 };
 
 export const RestorePage: FunctionComponent = () => {
-    const [activeIndex, setIndex] = useState(0);
-    const [words, setWords] = useState<string[]>([]);
+    const [activeIndex, setIndex] = useState(-1);
+    const [words, setWords] = useState([""]);
     const [isSNCMode, setSNC] = useState(false); // SelectedNonCurrent
 
     const router = useRouter()!;
@@ -380,7 +380,7 @@ export const RestorePage: FunctionComponent = () => {
             filter((e: RouteEvent): e is NavigationFinished => e instanceof NavigationFinished)
         ).subscribe({
             next() {
-                setWords([""]);
+                setIndex(0);
                 subscribtion.unsubscribe();
             }
         })
