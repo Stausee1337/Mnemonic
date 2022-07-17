@@ -26,11 +26,26 @@ export const App: FunctionComponent = () => {
                         {   path => {
                                 switch (path) {
                                     case '/':
-                                        return { element: <WelcomePage/> };
+                                        return { 
+                                            element: <WelcomePage/>,
+                                            data: {
+                                                title: "Get Started - Mnemonic"
+                                            }
+                                        };
                                     case '/generate':
-                                        return { element: <GeneratePage config={config}/> };
+                                        return {
+                                            element: <GeneratePage config={config}/>,
+                                            data: {
+                                                title: "Generate - Mnemonic"
+                                            }
+                                        };
                                     case '/retrieve':
-                                        return { element: <RestorePage/>}
+                                        return {
+                                            element: <RestorePage/>,
+                                            data: {
+                                                title: "Retrieve - Mnemonic"
+                                            }
+                                        }
                                     default:
                                         return { element: <h1>Not Found</h1> };
                                 }

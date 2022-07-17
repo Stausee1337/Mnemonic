@@ -29,7 +29,7 @@ fn create_window_config() -> WindowConfig {
         width: 800f64,
         height: 630f64,
         resizable: false,
-        title: "Mnemonic".to_string(),
+        title: "".to_string(),
         fullscreen: false,
         focus: true,
         transparent: false,

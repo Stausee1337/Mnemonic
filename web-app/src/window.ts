@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "preact/hooks";
 import { filter } from "rxjs";
 import { establishChannel } from "./api";
-import { RouteChanged, RouteEvent, useRouter } from "./router";
+import { RouteChanged, RouteEvent, RouterInit, useRouter } from "./router";
 import { nullOrUndefined } from "./utils";
 
 type ListenerType<T> = (event: T) => void;
@@ -85,6 +85,19 @@ export function useEventProvider(): EventProvider {
         ).subscribe({
             next(value) {
                 const listener = listenersMap.get("routeChanged");
+                if (!nullOrUndefined(listener)) {
+                    listener!(value);
+                }
+            }
+        })
+    }, [])
+
+    useEffect(() => {
+        router?.events.pipe(
+            filter((e: RouteEvent): e is RouterInit => e instanceof RouterInit)
+        ).subscribe({
+            next(value) {
+                const listener = listenersMap.get("init");
                 if (!nullOrUndefined(listener)) {
                     listener!(value);
                 }

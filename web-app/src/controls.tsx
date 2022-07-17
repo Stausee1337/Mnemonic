@@ -9,7 +9,7 @@ import styles from "./controls.module.scss";
 import { Icon } from "./icons";
 import { Rust } from "./interface";
 import { useEventProvider } from "./window";
-import { useRouter } from "./router";
+import { RouteChanged, RouterInit, useRouter } from "./router";
 import { MemoryHistory, Update } from "history";
 
 
@@ -223,7 +223,17 @@ export const TitleBar: FunctionComponent = () => {
         Rust.windowSetTitle(newTitle);
     });
 
-    eventProvider.on<Update>("routeChanged", () => {
+    eventProvider.on<RouterInit>("init", e => {
+        e.data.then(data => {
+            document.title = data.title ?? ""
+        })
+    });
+
+    eventProvider.on<RouteChanged>("routeChanged", e => {
+        e.data.then(data => {
+            console.log(data);
+            document.title = data.title ?? "";
+        })
         const history = router.history as MemoryHistory;
         setDisabled(history.index <= 0);
     });

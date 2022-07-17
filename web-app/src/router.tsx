@@ -2,17 +2,45 @@ import { Component, createContext, createRef, Fragment, FunctionComponent, VNode
 import { useContext, useEffect, useMemo, useRef } from "preact/hooks";
 import { Location, History, createMemoryHistory, Update, Action  } from "history";
 import { classNames, nullOrUndefined } from "./utils";
-import { filter, Observable, Subject } from "rxjs";
+import { BehaviorSubject, filter, Observable, Subject } from "rxjs";
 import styles from "./router.module.scss";
 
 export abstract class RouteEvent {}
 
+export class RouterInit extends RouteEvent {
+    data: Promise<{ [key: string]: any }>;
+    private resolve: (data: { [key: string]: any }) => void = null!;
+
+    constructor (
+        public location: Location,
+    ) {
+        super();
+        this.data = new Promise(resolve => {
+            this.resolve = resolve;
+        })
+    }
+
+    initWithData(data: { [key: string]: any }) {
+        this.resolve(data);
+    }
+}
+
 export class RouteChanged extends RouteEvent {
+    data: Promise<{ [key: string]: any }>;
+    private resolve: (data: { [key: string]: any }) => void = null!;
+
     constructor(
         public action: Action,
         public location: Location
     ) {
         super();
+        this.data = new Promise(resolve => {
+            this.resolve = resolve;
+        })
+    }
+
+    initWithData(data: { [key: string]: any }) {
+        this.resolve(data);
     }
 }
 
@@ -20,11 +48,12 @@ export class NavigationFinished extends RouteEvent {};
 
 export class Router {
     public location: Location;
-    public events: Observable<RouteEvent> = new Subject<RouteEvent>();
+    public events: Observable<RouteEvent>;
     
     constructor(
         public history: History
     ) {
+        this.events = new BehaviorSubject<RouteEvent>(new RouterInit(history.location));
         this.location = history.location;
         const events = this.events as Subject<RouteEvent>;
         history.listen(update => {
@@ -207,13 +236,22 @@ export const RouterOutlet: FunctionComponent<{
                     } else if (e.action === Action.Push) {
                         animation.current!.animateTo(Direction.FORTH, result.element);
                     }
+                    e.initWithData(result.data ?? {});
                 }
             }
         })
     }, []);
 
     const route = useMemo<VNode>(() => {
-        return children(router.location.pathname).element;
+        const config = children(router.location.pathname);
+        router.events.pipe(
+            filter((e: RouteEvent): e is RouterInit => e instanceof RouterInit)
+        ).subscribe({
+            next(e) {
+                e.initWithData(config.data ?? {});
+            }
+        })
+        return config.element;
     }, [])
 
     const naviationFinished = () => {
