@@ -323,6 +323,41 @@ div.title-bar {
     }
 }
 
+h3.breadcrumb {
+    margin-left: 1.5rem;
+    margin-right: 1.5rem; // don't override older margins
+    display: flex;
+
+    span {
+        color: rgba(black, 0.6);
+        display: flex;
+        align-items: center;
+
+        &:not(:last-child) {
+            cursor: pointer;
+
+            &::after {
+                height: 2rem;
+                color: rgba(black, 0.6);
+                display: inline;
+                margin: 0 1rem;
+                content: "\ea60";
+                font-family: iconfont;
+                font-size: 2rem;
+                transform: scale(-1, 1);
+            }
+            
+            &:hover {
+                color: black;
+            }
+        }
+
+        &:last-child {
+            color: black;
+        }
+    }
+}
+
 div.expension-group {
     border-radius: 0.6rem;
     overflow: hidden;

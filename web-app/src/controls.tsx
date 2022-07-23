@@ -4,13 +4,15 @@ import { forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
 import { UsePopperState } from "@restart/ui/usePopper"
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
-import { classNames, makeId, nullOrUndefined } from "./utils";
+import { classNames, makeId, nullOrUndefined, useForceUpdate } from "./utils";
 import styles from "./controls.module.scss";
 import { Icon } from "./icons";
 import { Rust } from "./interface";
 import { useEventProvider } from "./window";
-import { RouteChanged, RouterInit, useRouter } from "./router";
-import { MemoryHistory, Update } from "history";
+import { RouteChanged, RouteEvent, RouterInit, useRouter } from "./router";
+import { Action, Location, MemoryHistory, Update } from "history";
+import { filter } from "rxjs";
+import { dequal } from "dequal";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -235,7 +237,6 @@ export const TitleBar: FunctionComponent = () => {
 
     eventProvider.on<RouteChanged>("routeChanged", e => {
         e.data.then(data => {
-            console.log(data);
             document.title = data.title ?? "";
         })
         const history = router.history as MemoryHistory;
@@ -367,3 +368,74 @@ export const ExpansionContainer: FunctionComponent<{
 
 export const ExpansionGroup: FunctionComponent = ({ children }) => 
     <div class={styles['expension-group']} children={children}/>
+
+
+type Def = {
+    pathname: string,
+    heading: string
+}
+
+export const Breadcrumb: FunctionComponent = () => {
+    const router = useRouter()!;
+    const [path, setPath] = useState<string[]>([]);
+    const [headingMap, setHeadingMap] = useState<{ [key: string]: any }>({});
+    const setPathRef = useRef<(defs: string[]) => void>(null!);
+    setPathRef.current = setPath;
+
+    useEffect(() => {
+        const addEntry = async (
+            location: Location,
+            promise: Promise<{ [key: string]: any }>
+        ) => {
+            return promise.then(data => {
+                const path = location.pathname.split('/');
+                headingMap[path[path.length - 1]] = data.heading ?? '';
+                setHeadingMap({ ...headingMap });
+            });
+        }
+
+        router.events.pipe(
+            filter((e: RouteEvent): e is RouterInit => e instanceof RouterInit)
+        ).subscribe({
+            async next(e) {
+                await addEntry(e.location, e.data);
+                setPathRef.current(e.location.pathname.split('/'));
+            }
+        })
+
+        router.events.pipe(
+            filter((e: RouteEvent): e is RouteChanged => e instanceof RouteChanged)
+        ).subscribe({
+            async next(e) {
+                await addEntry(e.location, e.data);
+                setPathRef.current(e.location.pathname.split('/'));
+            }
+        })
+    
+        
+    }, [])
+
+    const isVisible = () => {
+        if (path.length === 0) {
+            return false;
+        }
+        return !dequal(path, ['', '']);
+    }
+
+    // generatePathRouter
+    const gpr = (path: string[]) => () => {
+        let link = path.join('/');
+        if (link === '') link = '/';
+        console.log(link, router.location.pathname);
+        if (link !== router.location.pathname) {
+            router.history.push(link);
+        }
+    }
+    return ( isVisible() ?
+        (<h3 class={styles.breadcrumb}>
+            { path.map((spath, idx) => 
+                <span onClick={gpr(path.slice(0, idx+1))} children={headingMap[spath]}/>
+             ) }
+        </h3>) : null
+    )
+}

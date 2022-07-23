@@ -47,14 +47,15 @@ export class RouteChanged extends RouteEvent {
 export class NavigationFinished extends RouteEvent {};
 
 export class Router {
-    public location: Location;
+    public get location(): Location {
+        return this.history.location;
+    }
     public events: Observable<RouteEvent>;
     
     constructor(
         public history: History
     ) {
         this.events = new BehaviorSubject<RouteEvent>(new RouterInit(history.location));
-        this.location = history.location;
         const events = this.events as Subject<RouteEvent>;
         history.listen(update => {
             events.next(new RouteChanged(

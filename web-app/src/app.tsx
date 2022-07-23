@@ -3,7 +3,8 @@ import { FunctionComponent } from 'preact';
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
 import { WelcomePage, containerClass } from './components/welcome';
-import { TitleBar } from './controls';
+import { Breadcrumb, TitleBar } from './controls';
+import { Icon } from './icons';
 import { NotificationProvider } from './notification';
 import { RouterOutlet, RouterProvider } from './router';
 import { ConfigData } from './types';
@@ -22,6 +23,7 @@ export const App: FunctionComponent = () => {
             <RouterProvider>
                 <TitleBar/>
                 <div id="page-content">
+                    <Breadcrumb/>
                     <RouterOutlet>
                         {   path => {
                                 switch (path) {
@@ -30,14 +32,16 @@ export const App: FunctionComponent = () => {
                                             element: <WelcomePage/>,
                                             data: {
                                                 title: "Get Started - Mnemonic",
-                                                class: containerClass
+                                                class: containerClass,
+                                                heading: "Home"
                                             }
                                         };
                                     case '/generate':
                                         return {
                                             element: <GeneratePage config={config}/>,
                                             data: {
-                                                title: "Generate - Mnemonic"
+                                                title: "Generate - Mnemonic",
+                                                heading: "Generate"
                                             }
                                         };
                                     case '/retrieve':

@@ -175,7 +175,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         ).subscribe({
             next() {
                 setInitialzed(1);
-                subscribtion.unsubscribe();
+                setTimeout(() => subscribtion.unsubscribe(), 0);
             }
         })
     }, [])
@@ -227,39 +227,36 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     }
 
     return (
-        <>
-            <h3>Generate</h3>
-            <div class={styles['generate-grid']}>
-                <ExpansionGroup>
-                    <ExpansionContainer 
-                        buttons={[
-                            { icon: 'printer', onClick: () => {} },
-                            { icon: 'update', onClick: updatePhrase }
-                        ]}
-                        heading="Mnemonic Phrase" expanded>
-                        <ContainerBox>
-                        <div
-                            onAnimationStart={animationHandler} 
-                            className={classNames({ 
-                                [styles['word-container']]: true,
-                                [styles['animating']]: animating
-                            })}>
-                            { words }
-                        </div>
-                        </ContainerBox>
-                    </ExpansionContainer>
-                    <ExpansionContainer heading="Password Settings">
-                        <PasswordSettings data={config} onChange={setConfig}/>
-                    </ExpansionContainer>
-                    <ExpansionContainer
-                        buttons={[
-                            { icon: 'copy', onClick: copyPassword }
-                        ]}
-                        heading="Password" expanded>
-                        <PasswordOutput password={password} entropy={calculatePasswordEntropy(config)}/>
-                    </ExpansionContainer>
-                </ExpansionGroup>
-            </div>
-        </>
+        <div class={styles['generate-grid']}>
+            <ExpansionGroup>
+                <ExpansionContainer 
+                    buttons={[
+                        { icon: 'printer', onClick: () => {} },
+                        { icon: 'update', onClick: updatePhrase }
+                    ]}
+                    heading="Mnemonic Phrase" expanded>
+                    <ContainerBox>
+                    <div
+                        onAnimationStart={animationHandler} 
+                        className={classNames({ 
+                            [styles['word-container']]: true,
+                            [styles['animating']]: animating
+                        })}>
+                        { words }
+                    </div>
+                    </ContainerBox>
+                </ExpansionContainer>
+                <ExpansionContainer heading="Password Settings">
+                    <PasswordSettings data={config} onChange={setConfig}/>
+                </ExpansionContainer>
+                <ExpansionContainer
+                    buttons={[
+                        { icon: 'copy', onClick: copyPassword }
+                    ]}
+                    heading="Password" expanded>
+                    <PasswordOutput password={password} entropy={calculatePasswordEntropy(config)}/>
+                </ExpansionContainer>
+            </ExpansionGroup>
+        </div>
     );
 };
