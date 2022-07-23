@@ -428,7 +428,7 @@ export const RestorePage: FunctionComponent = () => {
     }
 
     return (
-        <div class={styles.container}>
+        <>
             <h3>Restore</h3>
             <div class={styles['grid-view']}>
                 <div class={styles['word-box']}>
@@ -444,6 +444,6 @@ export const RestorePage: FunctionComponent = () => {
                     <Button>Calculate Password</Button>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

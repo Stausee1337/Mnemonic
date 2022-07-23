@@ -227,7 +227,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     }
 
     return (
-        <div class={styles.container}>
+        <>
             <h3>Generate</h3>
             <div class={styles['generate-grid']}>
                 <ExpansionGroup>
@@ -260,6 +260,6 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                     </ExpansionContainer>
                 </ExpansionGroup>
             </div>
-        </div>
+        </>
     );
 };

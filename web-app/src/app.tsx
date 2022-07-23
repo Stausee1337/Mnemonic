@@ -2,7 +2,7 @@ import { FunctionComponent } from 'preact';
 
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
-import { WelcomePage } from './components/welcome';
+import { WelcomePage, containerClass } from './components/welcome';
 import { TitleBar } from './controls';
 import { NotificationProvider } from './notification';
 import { RouterOutlet, RouterProvider } from './router';
@@ -29,7 +29,8 @@ export const App: FunctionComponent = () => {
                                         return { 
                                             element: <WelcomePage/>,
                                             data: {
-                                                title: "Get Started - Mnemonic"
+                                                title: "Get Started - Mnemonic",
+                                                class: containerClass
                                             }
                                         };
                                     case '/generate':

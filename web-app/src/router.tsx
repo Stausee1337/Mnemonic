@@ -70,7 +70,7 @@ class Container extends Component<{}, { children: VNode[] }> {
     constructor() {
         super();
         this.attachElement = this.attachElement.bind(this);
-        this.detachElement = this.detachElement.bind(this);
+        this.detachElementAt = this.detachElementAt.bind(this);
         this.state = { children: [] };
     }
 
@@ -90,19 +90,7 @@ class Container extends Component<{}, { children: VNode[] }> {
         }
     }
 
-    detachElement(element: VNode) {
-        const index = this.state.children.indexOf(element);;
-        if (index <= -1) {
-            console.warn('element not in container');
-            return;
-        }
-        this.state.children.splice(index, 1);
-        this.setState({
-            children: [...this.state.children]
-        })
-    }
-
-    detacheElementAt(index: number) {
+    detachElementAt(index: number) {
         if (index < this.state.children.length) {
             this.state.children.splice(index, 1);
             this.setState({
@@ -159,14 +147,14 @@ class RoutingAnimation extends Component<
         }
     }
 
-    animateTo(direction: Direction, element: VNode) {
+    animateTo(direction: Direction, element: VNode, className?: string) {
         switch (direction) {
             case Direction.BACK:
-                this.containerRef.current!.attachElement(element, 0);
+                this.containerRef.current!.attachElement((<div id="container" class={className} children={element}/>), 0);
                 this.setState({ animating: true, direction: direction });
                 break;
             case Direction.FORTH:
-                this.containerRef.current!.attachElement(element);
+                this.containerRef.current!.attachElement((<div id="container" class={className} children={element}/>));
                 this.setState({ animating: true, direction: direction });
                 break;
         };
@@ -178,10 +166,10 @@ class RoutingAnimation extends Component<
     animationEnd() {
         switch (this.state.direction) {
             case Direction.FORTH:
-                this.containerRef.current!.detacheElementAt(0);
+                this.containerRef.current!.detachElementAt(0);
                 break;
             case Direction.BACK:
-                this.containerRef.current!.detacheElementAt(1);
+                this.containerRef.current!.detachElementAt(1);
                 break;
         }
         if (!nullOrUndefined(this.props.onAnimaionEnd)) {
@@ -191,7 +179,6 @@ class RoutingAnimation extends Component<
     }
 
     render(): any {
-        const Element = this.state.animating ? 'div' : Fragment;
         const props = this.state.animating ? this.compileProps() : {class: styles['router-animation']};
         return (
             <div {...props}>
@@ -231,18 +218,19 @@ export const RouterOutlet: FunctionComponent<{
             next(e) {
                 if (!nullOrUndefined(animation.current)) {
                     const result = children(e.location.pathname);
+                    const data = result.data ?? {};
                     if (e.action === Action.Pop) {
-                        animation.current!.animateTo(Direction.BACK, result.element);
+                        animation.current!.animateTo(Direction.BACK, result.element, data.class);
                     } else if (e.action === Action.Push) {
-                        animation.current!.animateTo(Direction.FORTH, result.element);
+                        animation.current!.animateTo(Direction.FORTH, result.element, data.class);
                     }
-                    e.initWithData(result.data ?? {});
+                    e.initWithData(data);
                 }
             }
         })
     }, []);
 
-    const route = useMemo<VNode>(() => {
+    const [route, data] = useMemo<[VNode, any]>(() => {
         const config = children(router.location.pathname);
         router.events.pipe(
             filter((e: RouteEvent): e is RouterInit => e instanceof RouterInit)
@@ -251,7 +239,7 @@ export const RouterOutlet: FunctionComponent<{
                 e.initWithData(config.data ?? {});
             }
         })
-        return config.element;
+        return [config.element, config.data ?? {}];
     }, [])
 
     const naviationFinished = () => {
@@ -261,7 +249,7 @@ export const RouterOutlet: FunctionComponent<{
 
     return (
         <RoutingAnimation ref={animation} onAnimaionEnd={naviationFinished}>
-            { route }
+            { <div id="container" class={data.class} children={route}/> }
         </RoutingAnimation>
     )
 }

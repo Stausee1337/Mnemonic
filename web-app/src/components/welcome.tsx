@@ -23,7 +23,7 @@ export const WelcomePage: FunctionComponent = () => {
     const history = useRouter()!.history;
 
     return (
-        <div class={styles.container}>
+        <>
             <div class={styles.header}>
                 <h1 class={styles.caption}>Mnemonic</h1>
                 <p class={styles.subtitle}>Password Memorizer</p>
@@ -46,6 +46,8 @@ export const WelcomePage: FunctionComponent = () => {
             <div class={styles.footer}>
                 <Checkbox>Skip to retrieve page</Checkbox>
             </div>
-        </div>
+        </>
     )
 }
+
+export const containerClass = styles['container'];
