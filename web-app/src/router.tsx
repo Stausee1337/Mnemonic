@@ -109,7 +109,7 @@ class Container extends Component<{}, { children: VNode[] }> {
     }
 }
 
-enum Direction { BACK, FORTH }
+export enum Direction { BACK, FORTH, AUTO }
 
 class RoutingAnimation extends Component<
 { children: VNode, onAnimaionEnd?: (direction: Direction) => void },
@@ -213,6 +213,40 @@ export const RouterOutlet: FunctionComponent<{
     const animation = useRef<RoutingAnimation>(null);
 
     useEffect(() => {
+        const pushedDirections: Direction[] = [];
+        const directionFromAction = (action: Action) => {
+            switch (action) {
+                case Action.Pop:
+                    return Direction.AUTO;
+                case Action.Push:
+                    return Direction.FORTH;
+                default:
+                    console.error('Unaccepted Action');
+                    break;
+            }
+        }
+
+        const getObjectState = (state: unknown): { [key: string]: any } => {
+            if (!nullOrUndefined(state) && typeof state === 'object' && !Array.isArray(state)) {
+                return state!;
+            } else {
+                return {};
+            }
+        }
+
+        const resolveAuto = (direction: Direction): Direction => {
+            if (direction !== Direction.AUTO) {
+                return direction;
+            }
+            switch (pushedDirections.pop()) {
+                case Direction.BACK:
+                    return Direction.FORTH;
+                case Direction.FORTH:
+                default:
+                    return Direction.BACK;
+            }
+        }
+
         router.events.pipe(
             filter((e: RouteEvent): e is RouteChanged => e instanceof RouteChanged)
         ).subscribe({
@@ -220,10 +254,10 @@ export const RouterOutlet: FunctionComponent<{
                 if (!nullOrUndefined(animation.current)) {
                     const result = children(e.location.pathname);
                     const data = result.data ?? {};
-                    if (e.action === Action.Pop) {
-                        animation.current!.animateTo(Direction.BACK, result.element, data.class);
-                    } else if (e.action === Action.Push) {
-                        animation.current!.animateTo(Direction.FORTH, result.element, data.class);
+                    const direction = getObjectState(e.location.state).direction ?? directionFromAction(e.action)
+                    animation.current!.animateTo(resolveAuto(direction)!, result.element, data.class);
+                    if (e.action === Action.Push) {
+                        pushedDirections.push(direction)
                     }
                     e.initWithData(data);
                 }

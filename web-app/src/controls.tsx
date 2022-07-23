@@ -9,7 +9,7 @@ import styles from "./controls.module.scss";
 import { Icon } from "./icons";
 import { Rust } from "./interface";
 import { useEventProvider } from "./window";
-import { RouteChanged, RouteEvent, RouterInit, useRouter } from "./router";
+import { Direction, RouteChanged, RouteEvent, RouterInit, useRouter } from "./router";
 import { Action, Location, MemoryHistory, Update } from "history";
 import { filter } from "rxjs";
 import { dequal } from "dequal";
@@ -428,10 +428,10 @@ export const Breadcrumb: FunctionComponent = () => {
         if (link === '') link = '/';
         console.log(link, router.location.pathname);
         if (link !== router.location.pathname) {
-            router.history.push(link);
+            router.history.push(link, { direction: Direction.BACK });
         }
     }
-    return ( isVisible() ?
+    return ( true ?
         (<h3 class={styles.breadcrumb}>
             { path.map((spath, idx) => 
                 <span onClick={gpr(path.slice(0, idx+1))} children={headingMap[spath]}/>
