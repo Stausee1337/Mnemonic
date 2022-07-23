@@ -6,31 +6,51 @@
 }
 
 div.generate-grid {
-    display: grid;
-    grid-template-rows: 20.7rem 9rem auto;
+    
+    
     height: 100%;
+}
+
+div.card {
+    background-color: #eeeeee;
+    border: 1px solid #b3b3b3;
+    border-radius: 0.4rem;
+    position: relative;
+    padding: 1.5rem;
+
+    div.word-container {
+        position: relative;
+        margin: 3rem 1rem;
+    }
+
+    div.footer {
+        display: flex;
+        justify-content: flex-end;
+    }
 }
 
 div.word-container {
     display: flex;
-    width: 100%;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.75rem 1rem;
+    gap: 1rem;
     justify-content: center;
     overflow-y: auto;
     overflow-x: hidden;
+    grid-area: word;
 
     &.animating {
         overflow: visible;
     }
 
-    span.word {
+    span.word2 {
         height: 5rem;
+        background-color: white;
         padding: 0 2rem;
-        background-color: $prime;
-        color: white;
-        border-radius: 1rem;
+        
+        box-shadow: 0 2px 1px -1px #0003,0 1px 1px #00000024,0 1px 3px #0000001f;
+        color: black;
+        border-radius: 0.4rem;
         font-size: 2.5rem;
         display: flex;
         align-items: center;
@@ -39,9 +59,24 @@ div.word-container {
         line-height: 5rem;
     }
 
+    $height: 3.4rem;
+    span.word {
+        height: $height;
+        font-weight: 500;
+        font-size: 1.8rem;
+        color: white;
+        background-color: $prime;
+        border-radius: calc($height * 0.48);
+        padding: 0 1.6rem;
+        line-height: $height;
+        opacity: 0; animation: pop 250ms linear forwards;
+
+        
+    }
+
     span.spacer {
         height: 5.5rem;
-        width: 1.5rem;
+        width: 0;
         position: relative;
 
         &::after {
@@ -74,23 +109,20 @@ div.word-container {
 }
 
 div.password-box {
-    width: 77rem;
-    height: 7rem;
-    background-color: white;
-    margin: 1rem 0;
-    padding: 0 2rem;
-    box-shadow: 0 0.75rem 0 rgba(0, 0, 0, 0.1);
     position: relative;
     display: flex;
+    flex-direction: column;
+    
 
     span.label {
-        position: absolute;
+        // position: absolute;
         top: 0;
         left: 0;
-        font-size: 1.6rem;
-        font-weight: 600;
-        margin: 0.5rem;
-        z-index: 9;
+        font-size: 1.4rem;
+        font-weight: 400;
+        color: #545454;
+        // margin: 0.2rem;
+        // z-index: 9;
     }
 
     span.strength-indicator {
@@ -98,7 +130,7 @@ div.password-box {
         display: block;
         left: 0;
         bottom: 0;
-        height: 1rem;
+        height: 0.5rem;
         width: 100%;
         z-index: 10;
         transition: all 250ms ease-out;
@@ -114,9 +146,17 @@ div.password-box {
         overflow-y: hidden;
         white-space: nowrap;
         display: block;
+        font-size: 2.4rem;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: 600;
 
         &::-webkit-scrollbar {
             display: none;
+        }
+
+        &::selection {
+            background-color: $prime;
+            color: white;
         }
     }
 
@@ -154,6 +194,7 @@ div.password-box {
 div.controls-container {
     display: flex;
     justify-content: space-between;
+    grid-area: ctrls;
 
     span.length-indicator {
         font-size: 1.8rem;

@@ -22,7 +22,6 @@ export const ToggleSwitch: FunctionComponent<{
     disabled?: boolean
 }> = ({
     checked,
-    children,
     onChanged,
     disabled
 }) => {
@@ -31,7 +30,7 @@ export const ToggleSwitch: FunctionComponent<{
 
     return (
         <label class={styles.toggle} for={id} disabled={disabled}>
-            { children }
+            { checked ? 'On' : 'Off' }
             <input type="checkbox" disabled={disabled} id={id} onChange={e => onChanged ? onChanged(e.currentTarget.checked) : undefined} checked={checked} />
             <span class={styles.switch}/>
         </label>
@@ -56,9 +55,9 @@ export const Slider: FunctionComponent<{
     const [currentValue, setValue] = useState(value ?? (range / 2) + min);
     const [diffX, setDiffX] = useState(0);
     const [active, setActive] = useState(false);
-    const sliderRef = useRef<HTMLSpanElement>(null!);
+    const sliderRef = useRef<HTMLDivElement>(null!);
 
-    const sliderWidth = 200;
+    const sliderWidth = 234;
     const memoDocument = useMemo<MemoDocument>(() => {
         const rv: MemoDocument = {
             onMouseup: null,
@@ -89,7 +88,7 @@ export const Slider: FunctionComponent<{
 
     memoDocument.onMousemove = (e) => {
         if (!active) return;
-        const ratio = ((e.clientX - diffX)/ sliderWidth);
+        const ratio = ((e.clientX - diffX) / sliderWidth);
         const newValue = Math.round((ratio * range) + min);
         if (newValue >= min && newValue <= max) {
             setValue(newValue);
@@ -111,24 +110,29 @@ export const Slider: FunctionComponent<{
 
     const sliderMouseDown = (e: JSX.TargetedMouseEvent<HTMLSpanElement>) => {
         const left = e.currentTarget.getBoundingClientRect().left;
-        const ratio = ((e.clientX - left) / sliderWidth);
+        const ratio = ((e.clientX - left - 7) / sliderWidth);
         const newValue = Math.round((ratio * range) + min);
         if (newValue >= min && newValue <= max) {
             setValue(newValue);
         } else {
             setValue(Math.max(Math.min(min, newValue), max));
         }
+        setActive(true);
     }
 
     const ratio = (currentValue - min) / range;
+    const props = { active: active ? '' : null };
     return (
-        <div class={styles['slider-container']}>
-            <span class={styles['padding-contanier']} onMouseDown={sliderMouseDown}/>
-            <span ref={sliderRef} class={styles.background}>
-                <span class={styles.slider} style={{ 'transform': `translateX(-${200 - (sliderWidth * ratio)}px)` }}/>
-            </span>
-            <span onMouseDown={handleMouseDown} style={{ transform: `translateX(${sliderWidth * ratio}px)` }} class={styles.handle}/>
-        </div>
+        <label class={styles.slider}>
+            { currentValue }
+            <div class={styles['slider-container']} onMouseDown={sliderMouseDown} {...props}>
+                <div ref={sliderRef} class={styles['track']}>
+                    <div class={styles['track-background']}/>
+                    <div class={styles['track-fill']} style={{ transform: `scaleX(${ratio})` }}/>
+                </div>
+                <span onMouseDown={handleMouseDown} style={{ left: `${sliderWidth * ratio}px` }} class={styles.handle}/>
+            </div>
+        </label>
     )
 }
 
@@ -259,18 +263,107 @@ export const TitleBar: FunctionComponent = () => {
             [styles['window-active']]: active,
             [styles['window-inactive']]: !active
         })} drag-region>
-            <div class={styles.menu}>
+            <span class={styles.menu}>
                 <button disabled={buttonDisabled} class={styles['menu-back']} onClick={() => router.history.back()}>
                     <Icon name="arrow-back"/>
                 </button>
-            </div>
+            </span>
             <div class={styles.title}>{ title }</div>
             <div class={styles['window-controls']}>
                 <div onClick={minimize}><Icon name="minimize"/></div>
-                <div onClick={() => Rust.windowClose()} style={{ '--hover-bg-color': '#d11326', '--hover-ic-color': 'white' }}>
+                <div onClick={() => Rust.windowClose()} style={{ '--hover-bg-color': '#c42a1c', '--hover-ic-color': 'white' }}>
                     <Icon name="close"/>
                 </div>
             </div>
         </div>
     );
 }
+
+export const ContainerItem: FunctionComponent<{
+    label: string
+}> = ({ label, children }) => (
+    <div class={styles['container-item']}>
+        <span children={label}/>
+        { children }
+    </div>
+);
+
+export const ContainerBox: FunctionComponent<{ class?: string }> = ({ class: className, children }) => 
+    <div class={`${styles['contanier-box']} ${className}`} children={children}/>
+
+export const ExpansionContainer: FunctionComponent<{
+    heading: string,
+    expanded?: boolean,
+    buttons?: { icon: string, onClick: () => void }[]
+}> = ({ heading, expanded, buttons, children }) => {
+    const [show, setShow] = useState(expanded ?? false);
+    const [container, setContainer] = useState<HTMLDivElement | null>(null!);
+
+    useEffect(() => {
+        if (show) {
+            container?.animate([
+                { height: '51px' },
+                { height: `${container.offsetHeight}px` }
+            ], {
+                duration: 200,
+                easing: 'ease-in-out'
+            }).finished.then(() => {
+                container.style.height = `${container.offsetHeight}px`;
+            })
+        } else {
+            container?.animate([
+                { height: `${container.offsetHeight}px` },
+                { height: '51px' }
+            ], {
+                duration: 200,
+                easing: 'ease-in-out'
+            }).finished.then(() => {
+                container.style.height = null as any;
+            });
+        }
+    }, [show])
+
+    const ensureHeight = () => {
+        if (nullOrUndefined(container?.style.height)) {
+            console.error("Get container failed");
+            return;
+        }
+        if (show && container!.style.height === "") {
+            container!.style.height = `${container!.offsetHeight}px`;
+        }
+    }
+    
+    const props = { 
+        expanded: show ? '' : null,
+        collapsed: !show ? '' : null
+    }
+
+
+    // generateActionButtonHandler
+    const gabh = (handler: () => void) => (e: JSX.TargetedMouseEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        handler();
+    }
+    return (
+        <div ref={setContainer} class={styles['expansion-container']} { ...props }>
+            <button onClick={() => {ensureHeight(); setShow(!show)}} class={styles['expansion-button']}>
+                <span children={heading}/>
+                <div class={styles.expand}/>
+                <div class={styles.buttons}>
+                    {
+                        (buttons ?? []).map(def => (
+                        <button onClick={gabh(def.onClick)} class={styles['action-button']}>
+                            <span class={styles.background}/>
+                            <Icon name={def.icon}/>
+                        </button>
+                        ))
+                    }
+                </div>
+            </button>
+            { show ? children : null }
+        </div>
+    );
+}
+
+export const ExpansionGroup: FunctionComponent = ({ children }) => 
+    <div class={styles['expension-group']} children={children}/>

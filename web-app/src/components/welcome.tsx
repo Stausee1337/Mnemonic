@@ -29,15 +29,16 @@ export const WelcomePage: FunctionComponent = () => {
                 <p class={styles.subtitle}>Password Memorizer</p>
             </div>
             <div class={styles.actions}>
+                <h5>Actions</h5>
                 <Action 
                     content="Generate Mnemonic Phrase"
-                    icon={<Icon width={35} name="generate-password"/>} 
+                    icon={<Icon height={28} name="generate-password"/>} 
                     onClick={() => history.push('/generate')}>
                     Start by generating a Password-Phrase-Pair to secure your accounts
                 </Action>
                 <Action 
                     content="Retrieve Password from Phrase"
-                    icon={<Icon width={35} name="restore-password"/>}
+                    icon={<Icon height={28} name="restore-password"/>}
                     onClick={() => history.push('/retrieve')} >
                     Enter your Mnemonic phrase and get back your Password
                 </Action>

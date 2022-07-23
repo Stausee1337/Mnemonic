@@ -1,8 +1,8 @@
-import { FunctionComponent } from "preact";
-import { ToggleSwitch, Slider, TooltipButton } from "../controls"
+import { FunctionComponent, VNode } from "preact";
+import { ToggleSwitch, Slider, TooltipButton, ExpansionContainer, ExpansionGroup, ContainerItem, ContainerBox, Button } from "../controls"
 import styles from "./generate.module.scss"
-import { random, classNames } from "../utils"
-import { useEffect, useRef, useState } from "preact/hooks";
+import { random, classNames, nullOrUndefined } from "../utils"
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Rust } from "../interface"
 import { useNotifier } from "../notification";
 import { Icon } from "../icons";
@@ -11,11 +11,18 @@ import { filter } from "rxjs";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
-const Word: FunctionComponent = ({ children }) => {
-    const [delay, _] = useState(random(0, 300));
+const Word: FunctionComponent<{ idx: number }> = ({ idx, children }) => {
+    // const [delay, _] = useState(random(0, 300));
+    const [animating, setAnimating] = useState(true);
+
+    const props = {
+        animating: '' ? animating : null
+    }
     return <span 
+        {...props}
+        onAnimationEnd={() => setAnimating(false)}
         className={styles.word} 
-        style={{ animationDelay: `${delay}ms` }}>
+        style={{ animationDelay: `${idx * 50}ms` }}>
         {children}
     </span>
 }
@@ -51,22 +58,14 @@ const PasswordSettings: FunctionComponent<{
         lod = arrayState;
     }
 
+    // disabled={lod[0]} checked={characters} onChanged={setCharacters}
     return (
         <>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <h4>Password Settings</h4>
-                <ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}>Characters</ToggleSwitch>
-                <ToggleSwitch disabled={lod[1]} checked={digits} onChanged={setDigits}>Numbers</ToggleSwitch>
-                <ToggleSwitch disabled={lod[2]} checked={punctuation} onChanged={setPunctuation}>Punctuation</ToggleSwitch>
-                <ToggleSwitch disabled={lod[3]} checked={special} onChanged={setSpecial}>Special Punctuation</ToggleSwitch>
-                
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-                <div>
-                    <span class={styles['length-indicator']} >{length}</span>
-                    <Slider value={length} onChange={setLength} min={8} max={88}/>
-                </div>
-            </div>
+            <ContainerItem label="Characters" children={<ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}/>}/>
+            <ContainerItem label="Numbers" children={<ToggleSwitch disabled={lod[1]} checked={digits} onChanged={setDigits}/>}/>
+            <ContainerItem label="Punctuation" children={<ToggleSwitch disabled={lod[2]} checked={punctuation} onChanged={setPunctuation}/>}/>
+            <ContainerItem label="Special Punctuation" children={<ToggleSwitch disabled={lod[3]} checked={special} onChanged={setSpecial}/>}/>
+            <ContainerItem label="Length" children={<Slider min={8} max={88} value={length} onChange={setLength}/>}/>
         </>
     )
 }
@@ -185,24 +184,19 @@ const colorMapping = {
     0: ''
 }
 
-const IntelligentPasswordBox: FunctionComponent<{
+const PasswordOutput: FunctionComponent<{
     password: string | null,
     entropy: number
 }> = ({ password, entropy }) => {
-    const [fontSize, setSize] = useState(3);
     const [fadeR, setFadeR] = useState(false);
     const [fadeL, setFadeL] = useState(false);
     const [scale, setScale] = useState<0 | 0.25 | 0.5 | 0.75 | 1>(null!);
-    const pwdContent = useRef<HTMLSpanElement>(null!);
+    const [contentElement, setElement] = useState<HTMLSpanElement | null>(null!);
 
     useEffect(() => {
         if (!password) return;
         checkScroll();
-
-        if (password.length < 44 || password.length > 50) return;
-        const ratio = 1 - ((password.length - 40) / 10);
-        setSize((ratio * 0.5) + 2.5);
-    }, [password]);
+    }, [password, contentElement]);
 
     useEffect(() => {
         // very good 210
@@ -223,9 +217,13 @@ const IntelligentPasswordBox: FunctionComponent<{
     }, [entropy])
 
     const checkScroll = () => {
-        const element = pwdContent.current;
+        if (nullOrUndefined(contentElement)) {
+            return;
+        }
+        const element = contentElement!;
         if (element.scrollWidth > element.offsetWidth) {
             let value = true;
+            console.log(element.scrollWidth - element.scrollLeft)
             if (element.scrollWidth - element.scrollLeft === 730) {
                 value = false;
             }
@@ -233,30 +231,22 @@ const IntelligentPasswordBox: FunctionComponent<{
         } else {
             setFadeR(false);
         }
-
         setFadeL(element.scrollLeft > 0);
     }
 
     return (
-        <div 
-            id="pwdbox" 
-            class={classNames({ 
-                [styles['password-box']]: true, 
-                [styles['fade-r']]: fadeR, 
-                [styles['fade-l']]: fadeL 
-            })}>
-            <span class={styles.label}>Password:</span>
-            <span 
-                class={styles.content} 
-                onScroll={() => checkScroll()} 
-                style={{ fontSize: `${fontSize}rem` }} 
-                ref={pwdContent}>
-                { password ? password : null }
+        <ContainerBox class={classNames({
+            [styles['password-box']]: true,
+            [styles['fade-r']]: fadeR,
+            [styles['fade-l']]: fadeL,
+        })}>
+            <span ref={setElement} class={styles.content} onScroll={() => checkScroll()}>
+                { password }
             </span>
             <span 
                 style={{ transform: `scaleX(${scale})`, backgroundColor: colorMapping[scale] }} 
                 class={styles['strength-indicator']}/>
-        </div>
+        </ContainerBox>
     );
 }
 
@@ -312,6 +302,10 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         }
     }, [animating])
 
+    const words = useMemo<VNode[] | null>(() => (
+        wordlist ?  wordlist.map((w, i) => <Word idx={i} key={`${w}-${i}`}>{w}</Word>) : null
+    ), [wordlist])
+
     const animationHandler = () => {
         if (!animating) setAnimating(true);
     }
@@ -321,31 +315,43 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         setPassword(config.password);
     })
     
+    const copyPassword = () => {
+        navigator.clipboard.writeText(password);
+    }
 
     return (
         <div class={styles.container}>
             <h3>Generate</h3>
             <div class={styles['generate-grid']}>
-                <div 
-                    onAnimationStart={animationHandler} 
-                    className={classNames({ 
-                        [styles['word-container']]: true,
-                        [styles['animating']]: animating
-                    })}>
-                    { wordlist ?  wordlist.map((w, i) => <Word key={`${w}-${i}`}>{w}</Word>) 
-                        .reduce((prev, cur) => <>{prev} <Spacer/> {cur}</>) : null }
-                </div>
-                <IntelligentPasswordBox password={password} entropy={calculatePasswordEntropy(config)}/>
-                <div>
-                    <div class={styles['controls-container']}>
+                <ExpansionGroup>
+                    <ExpansionContainer 
+                        buttons={[
+                            { icon: 'printer', onClick: () => {} },
+                            { icon: 'update', onClick: updatePhrase }
+                        ]}
+                        heading="Mnemonic Phrase" expanded>
+                        <ContainerBox>
+                        <div
+                            onAnimationStart={animationHandler} 
+                            className={classNames({ 
+                                [styles['word-container']]: true,
+                                [styles['animating']]: animating
+                            })}>
+                            { words }
+                        </div>
+                        </ContainerBox>
+                    </ExpansionContainer>
+                    <ExpansionContainer heading="Password Settings">
                         <PasswordSettings data={config} onChange={setConfig}/>
-                        <ActionSidebar
-                            onCopy={() => navigator.clipboard.writeText(password)} 
-                            onRegen={updatePhrase}
-                            onPrint={() => wordlist.join(' - ')}
-                        />
-                    </div>
-                </div>
+                    </ExpansionContainer>
+                    <ExpansionContainer
+                        buttons={[
+                            { icon: 'copy', onClick: copyPassword }
+                        ]}
+                        heading="Password" expanded>
+                        <PasswordOutput password={password} entropy={calculatePasswordEntropy(config)}/>
+                    </ExpansionContainer>
+                </ExpansionGroup>
             </div>
         </div>
     );
