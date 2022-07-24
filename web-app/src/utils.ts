@@ -1,4 +1,4 @@
-import { StateUpdater, useState } from "preact/hooks";
+import { StateUpdater, useState, useRef, useEffect, useCallback } from "preact/hooks";
 
 
 export function classNames(input: { [key: string]: boolean }): string;
@@ -46,6 +46,36 @@ export function useForceUpdate(): () => void {
     return () => setter(value + 1);
 }
 
+export function useMounted(): () => boolean {
+    const mounted = useRef(true);
+    const isMounted = useRef(() => mounted.current);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        }
+    }, [])
+    return isMounted.current;
+}
+
+export function useSafeState<S>(
+    initialState: S | (() => S)
+): [S, StateUpdater<S>] {
+    const isMounted = useMounted();
+    const state = useState<S>(initialState);
+    return [
+        state[0],
+        useCallback(
+            (nextState) => {
+                if (!isMounted()) return;
+                return state[1](nextState);
+            },
+            [isMounted, state[1]]
+        )
+    ]
+}
+
 export function nullOrUndefined(value: any): boolean {
     return value === undefined || value === null;
 }
+

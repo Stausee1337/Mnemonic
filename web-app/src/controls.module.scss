@@ -358,6 +358,37 @@ h3.breadcrumb {
     }
 }
 
+span.history {
+    width: 22rem;
+    background-color: white;
+    box-shadow: 0 0 1rem $gray;
+    border-radius: 0.8rem;
+    padding: 0.4rem;
+    font-size: 1.4rem;
+
+    &.hidden {
+        display: none;
+    }
+
+    span.item {
+        display: block;
+        border-radius: 0.4rem;
+        padding: 0.7rem 1rem;
+
+        &:not(:first-child) {
+            cursor: pointer;
+        }
+
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        &:not(:last-child) {
+            margin-bottom: 0.4rem;
+        }
+    }
+}
+
 div.expension-group {
     border-radius: 0.6rem;
     overflow: hidden;

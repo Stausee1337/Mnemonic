@@ -1,10 +1,11 @@
 import { FunctionComponent, JSX } from "preact";
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { forwardRef } from "preact/compat"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { createPortal, forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
 import { UsePopperState } from "@restart/ui/usePopper"
+import mergeOptionsWithPopperConfig from "@restart/ui/mergeOptionsWithPopperConfig"
 import _default from "@popperjs/core/lib/modifiers/popperOffsets";
-import { classNames, makeId, nullOrUndefined, useForceUpdate } from "./utils";
+import { classNames, makeId, nullOrUndefined, useForceUpdate, useSafeState } from "./utils";
 import styles from "./controls.module.scss";
 import { Icon } from "./icons";
 import { Rust } from "./interface";
@@ -13,6 +14,7 @@ import { Direction, RouteChanged, RouteEvent, RouterInit, useRouter } from "./ro
 import { Action, Location, MemoryHistory, Update } from "history";
 import { filter } from "rxjs";
 import { dequal } from "dequal";
+import usePopper from "@restart/ui/cjs/usePopper";
 
 
 export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
@@ -217,8 +219,46 @@ export const TitleBar: FunctionComponent = () => {
     const [active, setActive] = useState(true);
     const [title, setTitle] = useState("");
     const [buttonDisabled, setDisabled] = useState(true);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [backButton, setBackButton] = useState<HTMLButtonElement | null>(null!);
+    const historyContainerRef = useRef<HTMLSpanElement>(null);
+    const timeoutRef = useRef<number>(null!);
+    const historyOpenRef = useRef<{ historyOpen: boolean, setHistoryOpen: (v: boolean) => void }>(null!);
+    historyOpenRef.current = { historyOpen, setHistoryOpen };
     const router = useRouter()!;
     const eventProvider = useEventProvider();
+
+    const popper = usePopper(
+        backButton,
+        historyContainerRef.current,
+        {
+            placement: "bottom",
+            modifiers: [
+                { name: "offset", options: { offset: [1, 3] } }
+            ]
+        }
+    )
+
+    useEffect(() => {
+        const listener = (e: MouseEvent) => {
+            if (!historyOpenRef.current.historyOpen) {
+                return;
+            }
+            if (!e.composedPath().includes(historyContainerRef.current!)) {
+                historyOpenRef.current.setHistoryOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", listener);
+        return () => {
+            document.addEventListener("mousedown", listener);
+        }
+    }, [])
+    
+    useLayoutEffect(() => {
+        if (historyOpen) {
+            popper.update();
+        }
+    }, [historyOpen])
 
     eventProvider.on<{ active: boolean }>("stateChanged", ({ active }) => {
         setActive(active);
@@ -254,6 +294,10 @@ export const TitleBar: FunctionComponent = () => {
 
     }
 
+    const buttonMouseLeave = (e: JSX.TargetedMouseEvent<HTMLElement>) => {
+        clearTimeout(timeoutRef.current);
+    }
+
     const minimize = () => {
         Rust.windowMinimize();
     }
@@ -265,7 +309,13 @@ export const TitleBar: FunctionComponent = () => {
             [styles['window-inactive']]: !active
         })} drag-region>
             <span class={styles.menu}>
-                <button disabled={buttonDisabled} class={styles['menu-back']} onClick={() => router.history.back()}>
+                <button 
+                    ref={setBackButton}
+                    class={styles['menu-back']} 
+                    disabled={buttonDisabled}
+                    onClick={() => !historyOpen ? router.history.back() : undefined}
+                    onMouseDown={() => timeoutRef.current = setTimeout(() => setHistoryOpen(true), 500)}
+                    onMouseUp={buttonMouseLeave}>
                     <Icon name="arrow-back"/>
                 </button>
             </span>
@@ -276,8 +326,71 @@ export const TitleBar: FunctionComponent = () => {
                     <Icon name="close"/>
                 </div>
             </div>
+            { createPortal(
+                <span 
+                    {...popper.attributes.popper}
+                    style={{ ...popper.styles['popper'] } as any}
+                    ref={historyContainerRef} 
+                    class={classNames({ 
+                        [styles.history]: true, 
+                        [styles.hidden]: !historyOpen
+                    })}
+                    onClick={() => popper.forceUpdate()}
+                    children={<History close={() => setHistoryOpen(false)}/>}/>,
+                document.body
+            ) }
         </div>
     );
+}
+
+export const History: FunctionComponent<{ close: () => void }> = ({ close }) => {
+    const router = useRouter()!;
+    const [history, setHistory] = useState<string[]>([]);
+
+    useEffect(() => {
+        const pushHistory = (promise: Promise<{ [key: string]: any }>) => promise.then(data => {
+            history.push(data.heading ?? '');
+            setHistory([...history])
+        })
+
+        router.events.pipe(
+            filter((e: RouteEvent): e is RouterInit => e instanceof RouterInit)
+        ).subscribe({
+            next(e) {
+                pushHistory(e.data);
+            }
+        })
+
+        router.events.pipe(
+            filter((e: RouteEvent): e is RouteChanged => e instanceof RouteChanged)
+        ).subscribe({
+            next(e) {
+                if (e.action === Action.Push) {
+                    pushHistory(e.data);
+                } else if (e.action === Action.Pop) {
+                    const newLength = (router.history as MemoryHistory).index + 1;
+                    const diff = history.length - newLength;
+                    history.splice(-diff, diff)
+                    setHistory([ ...history ])
+                }
+            }
+        })
+    }, [])
+
+    // clickHandlerFactory
+    const chf = (index: number) => () => {
+        if (index > 0) {
+            router.history.go(-index);
+        }
+        close();
+    }
+
+    return (
+        <>
+            { [...history].reverse().map((heading, idx) => 
+                <span class={styles.item} children={heading} onClick={chf(idx)}/>) }
+        </>
+    )
 }
 
 export const ContainerItem: FunctionComponent<{
@@ -298,7 +411,7 @@ export const ExpansionContainer: FunctionComponent<{
     buttons?: { icon: string, onClick: () => void }[]
 }> = ({ heading, expanded, buttons, children }) => {
     const [show, setShow] = useState(expanded ?? false);
-    const [container, setContainer] = useState<HTMLDivElement | null>(null!);
+    const [container, setContainer] = useSafeState<HTMLDivElement | null>(null!);
 
     useEffect(() => {
         if (show) {
@@ -369,11 +482,6 @@ export const ExpansionContainer: FunctionComponent<{
 export const ExpansionGroup: FunctionComponent = ({ children }) => 
     <div class={styles['expension-group']} children={children}/>
 
-
-type Def = {
-    pathname: string,
-    heading: string
-}
 
 export const Breadcrumb: FunctionComponent = () => {
     const router = useRouter()!;

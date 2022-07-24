@@ -1,7 +1,7 @@
 import { FunctionComponent, VNode } from "preact";
 import { ToggleSwitch, Slider, TooltipButton, ExpansionContainer, ExpansionGroup, ContainerItem, ContainerBox, Button } from "../controls"
 import styles from "./generate.module.scss"
-import { random, classNames, nullOrUndefined } from "../utils"
+import { random, classNames, nullOrUndefined, useSafeState } from "../utils"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Rust } from "../interface"
 import { useNotifier } from "../notification";
@@ -98,7 +98,7 @@ const PasswordOutput: FunctionComponent<{
     const [fadeR, setFadeR] = useState(false);
     const [fadeL, setFadeL] = useState(false);
     const [scale, setScale] = useState<0 | 0.25 | 0.5 | 0.75 | 1>(null!);
-    const [contentElement, setElement] = useState<HTMLSpanElement | null>(null!);
+    const [contentElement, setElement] = useSafeState<HTMLSpanElement | null>(null!);
 
     useEffect(() => {
         if (!password) return;
