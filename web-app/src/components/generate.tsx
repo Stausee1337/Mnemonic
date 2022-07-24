@@ -130,8 +130,7 @@ const PasswordOutput: FunctionComponent<{
         const element = contentElement!;
         if (element.scrollWidth > element.offsetWidth) {
             let value = true;
-            console.log(element.scrollWidth - element.scrollLeft)
-            if (element.scrollWidth - element.scrollLeft === 730) {
+            if (element.scrollWidth - element.scrollLeft === 720) {
                 value = false;
             }
             setFadeR(value);
@@ -231,7 +230,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
             <ExpansionGroup>
                 <ExpansionContainer 
                     buttons={[
-                        { icon: 'printer', onClick: () => {} },
+                        { icon: 'printer', onClick: () => router.history.push('/generate/print') },
                         { icon: 'update', onClick: updatePhrase }
                     ]}
                     heading="Mnemonic Phrase" expanded>

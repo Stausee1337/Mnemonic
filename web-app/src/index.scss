@@ -51,19 +51,32 @@ button, input, textarea {
   font-size: 1.4rem;
 }
 
+$breadcrumb-diff: (3.5rem + 2*0.7rem);
 #app {
   height: 100%;
 
   font-size: 1.4rem;
   display: grid;
   grid-template-rows: 3.2rem auto;
+  overflow: hidden;
 
   #page-content {
-    overflow: hidden;
+    height: 59.8rem;
+    overflow-y: scroll;
+    overflow-x: hidden;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
-#container {
-  height: 100%;
-  margin: 0 1.5rem;
+body[breadcrumb-active] #app #page-content {
+  margin-top: $breadcrumb-diff;
+  height: (59.8rem - $breadcrumb-diff);
+}
+
+.page-container {
+  margin: 0 2rem;
+  padding: 1rem 0;
 }

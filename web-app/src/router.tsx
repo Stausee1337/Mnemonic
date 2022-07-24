@@ -151,11 +151,11 @@ class RoutingAnimation extends Component<
     animateTo(direction: Direction, element: VNode, className?: string) {
         switch (direction) {
             case Direction.BACK:
-                this.containerRef.current!.attachElement((<div id="container" class={className} children={element}/>), 0);
+                this.containerRef.current!.attachElement((<div class={`${className} page-container`} children={element}/>), 0);
                 this.setState({ animating: true, direction: direction });
                 break;
             case Direction.FORTH:
-                this.containerRef.current!.attachElement((<div id="container" class={className} children={element}/>));
+                this.containerRef.current!.attachElement((<div class={`${className} page-container`} children={element}/>));
                 this.setState({ animating: true, direction: direction });
                 break;
         };
@@ -284,7 +284,7 @@ export const RouterOutlet: FunctionComponent<{
 
     return (
         <RoutingAnimation ref={animation} onAnimaionEnd={naviationFinished}>
-            { <div id="container" class={data.class} children={route}/> }
+            { <div class={`${data.class} page-container`} children={route}/> }
         </RoutingAnimation>
     )
 }

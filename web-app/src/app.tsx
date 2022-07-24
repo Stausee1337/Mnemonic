@@ -1,15 +1,18 @@
 import { FunctionComponent } from 'preact';
+import { useRef, useState } from 'preact/hooks';
 
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
 import { WelcomePage, containerClass } from './components/welcome';
-import { Breadcrumb, TitleBar } from './controls';
+import { Breadcrumb, CustomScrollbar, TitleBar } from './controls';
 import { Icon } from './icons';
 import { NotificationProvider } from './notification';
 import { RouterOutlet, RouterProvider } from './router';
 import { ConfigData } from './types';
 
 export const App: FunctionComponent = () => {
+    const [contentContainer, setContaienr] = useState<HTMLDivElement | null>(null!);
+
     const config: ConfigData = {
         characters: true,
         digits: true,
@@ -22,8 +25,9 @@ export const App: FunctionComponent = () => {
         <NotificationProvider>
             <RouterProvider>
                 <TitleBar/>
-                <div id="page-content">
-                    <Breadcrumb/>
+                <Breadcrumb/>
+                <div ref={setContaienr} id="page-content">
+                    <CustomScrollbar referenceElement={contentContainer}/>
                     <RouterOutlet>
                         {   path => {
                                 switch (path) {
@@ -44,6 +48,13 @@ export const App: FunctionComponent = () => {
                                                 heading: "Generate"
                                             }
                                         };
+                                    case '/generate/print':
+                                        return {
+                                            element: <></>,
+                                            data: {
+                                                heading: "Printing"
+                                            }
+                                        }
                                     case '/retrieve':
                                         return {
                                             element: <RestorePage/>,

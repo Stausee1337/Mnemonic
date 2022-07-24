@@ -324,9 +324,19 @@ div.title-bar {
 }
 
 h3.breadcrumb {
-    margin-left: 1.5rem;
-    margin-right: 1.5rem; // don't override older margins
+    margin: 0;
+    padding: 0.7rem 1.5rem;
     display: flex;
+    position: fixed;
+    top: 3.2rem;
+    left: 0;
+    z-index: 200;
+    background-color: #fafafa;
+    width: 100%;
+
+    &.hidden {
+        display: none;
+    }
 
     span {
         color: rgba(black, 0.6);
@@ -365,6 +375,7 @@ span.history {
     border-radius: 0.8rem;
     padding: 0.4rem;
     font-size: 1.4rem;
+    z-index: 2000;
 
     &.hidden {
         display: none;
@@ -524,4 +535,35 @@ div.expand {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+$dist: 4.9rem + 3.2rem;
+div.scrollbar {
+    position: fixed;
+    right: 0;
+    height: calc(100vh - $dist);
+    width: 6px;
+    top: $dist;
+    z-index: 2;
+    pointer-events: none;
+    background-color: #fafafa;
+    padding: 1rem 0;
+
+    &.hidden {
+        display: none;
+    }
+
+    span.slider {
+        background-color: #4d4d4d;
+        position: relative;
+        display: block;
+        width: 100%;
+        border: 2px solid #fafafa;
+        border-radius: 5rem;
+    }
+
+    &[hover] span.slider {
+        background-color: red;
+    }
+
 }

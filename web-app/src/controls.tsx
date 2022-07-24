@@ -528,22 +528,103 @@ export const Breadcrumb: FunctionComponent = () => {
             return false;
         }
         return !dequal(path, ['', '']);
+    };
+
+    if (isVisible()) {
+        document.body.setAttribute('breadcrumb-active', '');
+    } else {
+        document.body.removeAttribute('breadcrumb-active');
     }
+
 
     // generatePathRouter
     const gpr = (path: string[]) => () => {
         let link = path.join('/');
         if (link === '') link = '/';
-        console.log(link, router.location.pathname);
         if (link !== router.location.pathname) {
             router.history.push(link, { direction: Direction.BACK });
         }
     }
-    return ( true ?
-        (<h3 class={styles.breadcrumb}>
+    return (
+        <h3 class={classNames({
+            [styles.breadcrumb]: true,
+            [styles.hidden]: !isVisible()
+        })}>
             { path.map((spath, idx) => 
                 <span onClick={gpr(path.slice(0, idx+1))} children={headingMap[spath]}/>
              ) }
-        </h3>) : null
+        </h3>
+    )
+}
+
+export const CustomScrollbar: FunctionComponent<{
+    referenceElement: HTMLElement | null
+}> = ({referenceElement}) => {
+    const [visible, setVisible] = useState(false);
+    const [scrollY, setScrollY] = useState(0);
+    const [pageRatio, setRatio] = useState(0);
+    const [scrollbarElement, setScrollbar] = useState<HTMLSpanElement | null>(null!);
+    const recalculateRef = useRef<() => void>(null!);
+    const onScrollRef = useRef<() => void>(null!);
+    recalculateRef.current = () => {
+        if (nullOrUndefined(referenceElement)) {
+            setVisible(false);
+            return;
+        }
+        if (referenceElement!.scrollHeight > referenceElement!.offsetHeight) {
+            setRatio(referenceElement!.offsetHeight / referenceElement!.scrollHeight)
+            setVisible(true);
+        } else {
+            setVisible(false);
+        }
+    }; 
+    onScrollRef.current = () => {
+        if (nullOrUndefined(referenceElement)) {
+            return;
+        }
+        setScrollY(referenceElement!.scrollTop);
+    }
+
+    useEffect(() => {
+        if (nullOrUndefined(referenceElement)) {
+            return;
+        }
+        let ready = false;
+        const observer = new ResizeObserver(() => {
+            if (!ready) return;
+            recalculateRef.current();
+        });
+
+        observer.observe(referenceElement!);
+        observer.observe(referenceElement!.lastElementChild!);
+
+        window.requestAnimationFrame(() => {
+            ready = true;
+        })
+
+        const listener = () => onScrollRef.current();
+        referenceElement!.addEventListener('scroll', listener);
+
+        return () => {
+            observer.disconnect();
+            referenceElement!.removeEventListener('scroll', listener);
+        }
+    }, [referenceElement])
+
+    const sliderHeight = pageRatio * (scrollbarElement?.offsetHeight ?? 0) - 20;
+    return (
+        <div
+            ref={setScrollbar} 
+            class={classNames({
+                [styles.scrollbar]: true,
+                [styles.hidden]: !visible
+            })}>
+            <span 
+                style={{
+                    height: `${sliderHeight}px`,
+                    transform: `translateY(${scrollY * pageRatio}px)`
+                }}
+                class={styles.slider}/>
+        </div>
     )
 }
