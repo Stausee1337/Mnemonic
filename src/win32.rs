@@ -5,7 +5,12 @@ use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, WPARAM, LRESULT},
         System::LibraryLoader::*,
-        UI::{WindowsAndMessaging::*, Controls::MARGINS, Shell::{SetWindowSubclass, DefSubclassProc}}, Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea},
+        UI::{
+            WindowsAndMessaging::*,
+            Controls::MARGINS,
+            Shell::{SetWindowSubclass, DefSubclassProc}
+        }, 
+        Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea},
     },
 };
 

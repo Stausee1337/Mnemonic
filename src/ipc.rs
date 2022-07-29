@@ -320,6 +320,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "windowSetTitle" => {
             commands::window_set_title(window, invoke);
         }
+        "showMessageBox" => {
+            commands::show_message_box(window, invoke);
+        }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));
         }

@@ -362,6 +362,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "embed-manifest"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e72495854c232549f86253e1a146e6bd956eaae6968bed5773c4a30d59c4b32"
+
+[[package]]
 name = "field-offset"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -983,6 +989,7 @@ dependencies = [
 name = "mnemonic"
 version = "0.1.0"
 dependencies = [
+ "embed-manifest",
  "lazy_static",
  "pyo3",
  "serde",
@@ -995,6 +1002,7 @@ dependencies = [
  "uuid 1.1.2",
  "windows",
  "winres",
+ "winsafe",
  "wry",
 ]
 
@@ -2385,6 +2393,12 @@ checksum = "b68db261ef59e9e52806f688020631e987592bd83619edccda9c47d42cde4f6c"
 dependencies = [
  "toml",
 ]
+
+[[package]]
+name = "winsafe"
+version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac97bb0cb7c33e34890fbd50ca7aeac738530ba3ba967d456d075703d36007f1"
 
 [[package]]
 name = "wry"
