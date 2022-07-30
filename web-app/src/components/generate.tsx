@@ -8,6 +8,7 @@ import { useNotifier } from "../notification";
 import { Icon } from "../icons";
 import { NavigationFinished, RouteEvent, useRouter } from "../router";
 import { filter } from "rxjs";
+import { DialogResult, showMessageBox } from "../api";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
@@ -159,7 +160,7 @@ const PasswordOutput: FunctionComponent<{
 export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     config: initialConfig 
 }) => {
-    const [initialized, setInitialzed] = useState(0);
+    const [initialized, setInitialzed] = useSafeState(0);
     const [wordlist, setWordlist] = useState<string[]>(null!);
     const [password, setPassword] = useState<string>(null!);
     const [config, setConfig] = useState(initialConfig);
@@ -174,9 +175,37 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         ).subscribe({
             next() {
                 setInitialzed(1);
-                setTimeout(() => subscribtion.unsubscribe(), 0);
+                setTimeout(() => {
+                    subscribtion.unsubscribe()
+                }, 0);
             }
         })
+
+        const unblock = router.history.block(transition => {
+            showMessageBox({
+                message: "Are you sure you want to leave the Generate Page?",
+                title: "Mnemonic",
+                detail: "You haven't printed your Mnemonic Phrase yet.\nWithout it you wont be able to recover your password!",
+                type: "warning",
+                buttons: ["Yes, Leave", "No, Stay"],
+                defaultId: 1,
+                cancelId: 1,
+                noLink: true,
+                checkboxLabel: "Do not ask me again"
+            }).then(data => {
+                if (data.response !== DialogResult.Cancel) {
+                    console.assert(data.response === 0, "Respone should be zero");
+                    // todo: store data.checkboxChecked decision in config db
+                    unblock();
+                    transition.retry(); 
+                }
+            });
+        })
+
+        return () => {
+            subscribtion.unsubscribe();
+            unblock();
+        }
     }, [])
 
     useEffect(() => {

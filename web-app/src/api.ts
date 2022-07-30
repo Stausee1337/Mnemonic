@@ -1,6 +1,7 @@
-import { Observable, Subject, filter, map, first } from "rxjs";
+import { Observable, Subject, filter, map, first, flatMap } from "rxjs";
 import { nullOrUndefined } from "./utils";
 import { dequal } from "dequal"
+import { Rust } from "./interface";
 
 
 const event = new Event('application-init');
@@ -149,6 +150,77 @@ export function establishChannel<T>(name: string): Observable<T> {
             if (storedChannelId)
                 callRustCommand("closeChannel", [storedChannelId]);
         };
+    })
+}
+
+interface MessageBoxOptions {
+    message: string;
+    type?: "none" | "info" | "warning" | "error" | "shield";
+    buttons?: string[];
+    defaultId?: number;
+    title?: string;
+    detail?: string;
+    checkboxLabel?: string;
+    checkboxChecked?: boolean;
+    cancelId?: number;
+    noLink?: boolean;
+}
+
+export enum DialogResult {
+    Ok = "ok",
+    Cancel = "cancel",
+    Retry = "retry",
+    Yes = "yes",
+    No = "no",
+    Close = "close"
+}
+
+export type DialogResponse = {
+    response: DialogResult | number,
+    checkboxChecked: boolean 
+}
+
+const resultMapping = [
+    undefined,  // 0
+    "ok",       // 1
+    "cancel",   // 2
+    undefined,  // 3
+    "retry",    // 4
+    undefined,  // 5
+    "yes",      // 6
+    "no",       // 7
+    "close"     // 8
+]
+export function showMessageBox(options: MessageBoxOptions): Promise<DialogResponse> {
+    const {
+        type,
+        cancelId,
+        ...roptions
+    } = options;
+    return Rust.showMessageBox({
+        dialog_type: type ?? "",
+        ...Object.fromEntries(
+            Object.entries(roptions).map(
+                ([n, v]) => [
+                    n.split(/(?=[A-Z])/).join('_').toLowerCase(),
+                    v
+                ] 
+            )
+        )
+    }).then(({ response, checkboxChecked }) => {
+        if (response >= 100) {
+            response -= 100;
+            if (!nullOrUndefined(cancelId) && response === cancelId) {
+                response = DialogResult.Cancel;
+            }
+        } else {
+            response = resultMapping[response] ?? response;
+        }
+
+        return {
+            response: response,
+            checkboxChecked: checkboxChecked
+        }
     })
 }
 

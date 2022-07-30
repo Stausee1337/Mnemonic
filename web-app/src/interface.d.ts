@@ -10,5 +10,5 @@ namespace Rust {
     export async function windowClose(): Promise<void>;
     export async function windowMinimize(): Promise<void>;
     export async function windowSetTitle(title: string): Promise<void>;
-    export async function showMessageBox(config: { [ key: string ]: any }): Promise<void>;
+    export async function showMessageBox(config: { [ key: string ]: any }): Promise<any>;
 }
