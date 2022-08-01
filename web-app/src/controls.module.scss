@@ -415,6 +415,10 @@ div.expension-group {
             margin-bottom: 0.6rem;
         }
 
+        &[has-icon] button.expansion-button {
+            padding-left: 5rem;
+        }
+
         button.expansion-button {
             padding: 1.6rem 2rem;
             background-color: white;
@@ -428,6 +432,7 @@ div.expension-group {
             display: flex;
             align-items: center;
             transition: transform 100ms ease-in-out;
+            position: relative;
 
             &:not(:last-child) {
                 margin-bottom: 0.3rem;
@@ -448,6 +453,46 @@ div.expension-group {
                 background-size: 1.5rem;
                 transition: transform 200ms ease-in-out;
                 color: green;
+            }
+
+            span {
+                display: flex;
+                flex-direction: column;
+
+                h3.main-content {
+                    font-weight: 500;
+                    font-size: 1.4rem;
+                    margin: 0;
+                }
+            
+                span.description {
+                    font-size: 1.2rem;
+                    display: inline-block;
+                    color: rgba(black, 0.6);
+                    font-weight: 500;
+                }
+            }
+
+            span.icon-container {
+                position: absolute;
+                top: 1rem;
+                left: 0.75rem;
+                bottom: 1rem;
+                width: 3.5rem;
+                
+                icon {
+                    position: relative;
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+        
+                    &::before {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                    }
+                }
             }
 
             div.buttons {
@@ -566,4 +611,149 @@ div.scrollbar {
         background-color: red;
     }
 
+}
+
+button.action {
+    appearance: none;
+    border: none;
+    background-color: white;
+    border-radius: 0.6rem;
+    width: 100%;
+    padding: 1rem 1.5rem 1rem 5rem;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+
+    &:hover {
+        background-color: #dbdbdb;
+    }
+
+    h3.main-content {
+        font-weight: 500;
+        font-size: 1.4rem;
+        margin: 0;
+    }
+
+    span.description {
+        font-size: 1.2rem;
+        display: inline-block;
+        color: rgba(black, 0.6);
+        font-weight: 500;
+    }
+
+    span.hover-arrow {
+        position: absolute;
+        width: 1.5rem;
+        height: 1.5rem;
+        top: calc(50% - (1.5rem/2));
+        right: 5rem;
+
+        &::after, &::before {
+            position: absolute;
+            content: "";
+            top: 50%;
+            left: 105%;
+            width: 1.1rem;
+            height: 0.15rem;
+            transform: translate(-1rem, -50%);
+            transform-origin: right center;
+            transition: all 250ms ease-in-out;
+            background-color: black;
+            opacity: 0;
+        }
+    }
+
+    span.icon-container {
+        position: absolute;
+        top: 1rem;
+        left: 0.75rem;
+        bottom: 1rem;
+        width: 3.5rem;
+        
+        icon {
+            position: relative;
+            display: block;
+            width: 100%;
+            height: 100%;
+
+            &::before {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+        }
+    }
+
+    &:hover span.hover-arrow {
+        &::after, &::before {
+            opacity: 1;
+        }
+        &::before {
+            transform: translate(0, -40%) rotate(30deg);
+        }
+        &::after {
+            transform: translate(0, -60%) rotate(-30deg);
+        }
+    }
+}
+
+$main-animation-time: 4s;
+span.progress-spinner {
+    svg {
+        animation: pslr ($main-animation-time/2) linear infinite;
+
+        circle {
+            stroke-width: 10%;
+            stroke: $prime;
+            fill: rgba(black, 0);
+            stroke-dasharray: 282.743;
+            stroke-linecap: round;
+            transform-origin: 50% 50%;
+            animation-name: pssr;
+            animation-duration: $main-animation-time;
+            animation-iteration-count: infinite;
+            animation-timing-function: cubic-bezier(0.35, 0, 0.25, 1);
+        }
+    }
+}
+
+$pi: 3.14159265;
+
+$radius: 45;
+$circumference: $pi * $radius * 2;
+
+$start: (1 - 0.05) * $circumference;
+$end: (1 - 0.8) * $circumference;
+
+// progress spinner stroke rotate
+@keyframes pssr {
+  0%        { stroke-dashoffset: $start;  transform: rotate(0); }
+  12.5%     { stroke-dashoffset: $end;    transform: rotate(0); }
+  12.5001%  { stroke-dashoffset: $end;    transform: rotateX(180deg) rotate(72.5deg); }
+  25%       { stroke-dashoffset: $start;  transform: rotateX(180deg) rotate(72.5deg); }
+
+  25.0001%   { stroke-dashoffset: $start;  transform: rotate(270deg); }
+  37.5%      { stroke-dashoffset: $end;    transform: rotate(270deg); }
+  37.5001%   { stroke-dashoffset: $end;    transform: rotateX(180deg) rotate(161.5deg); }
+  50%        { stroke-dashoffset: $start;  transform: rotateX(180deg) rotate(161.5deg); }
+
+  50.0001%  { stroke-dashoffset: $start;  transform: rotate(180deg); }
+  62.5%     { stroke-dashoffset: $end;    transform: rotate(180deg); }
+  62.5001%  { stroke-dashoffset: $end;    transform: rotateX(180deg) rotate(251.5deg); }
+  75%       { stroke-dashoffset: $start;  transform: rotateX(180deg) rotate(251.5deg); }
+
+  75.0001%  { stroke-dashoffset: $start;  transform: rotate(90deg); }
+  87.5%     { stroke-dashoffset: $end;    transform: rotate(90deg); }
+  87.5001%  { stroke-dashoffset: $end;    transform: rotateX(180deg) rotate(341.5deg); }
+  100%      { stroke-dashoffset: $start;  transform: rotateX(180deg) rotate(341.5deg); }
+}
+
+
+// progress spinner linear rotate
+@keyframes pslr {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

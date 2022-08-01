@@ -221,7 +221,7 @@ export const RouterOutlet: FunctionComponent<{
                 case Action.Push:
                     return Direction.FORTH;
                 default:
-                    console.error('Unaccepted Action');
+                    console.warn('Wierd Action');
                     break;
             }
         }

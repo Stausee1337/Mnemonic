@@ -1,4 +1,4 @@
-import { FunctionComponent, JSX } from "preact";
+import { Fragment, FunctionComponent, JSX, RenderableProps, VNode } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createPortal, forwardRef } from "preact/compat"
 import { Overlay } from "@restart/ui"
@@ -16,9 +16,13 @@ import { filter } from "rxjs";
 import { dequal } from "dequal";
 import usePopper from "@restart/ui/cjs/usePopper";
 
-
-export const Button: FunctionComponent<{ onClick?: JSX.MouseEventHandler<EventTarget> }> = (props) => 
-    <button class={styles.button} onClick={props.onClick}>{props.children}</button>;
+export const Button = forwardRef<HTMLButtonElement, RenderableProps<{
+    onClick?: JSX.MouseEventHandler<EventTarget>,
+    disabled?: boolean
+}>>(
+    ({ onClick, disabled, children }, ref) => 
+    <button ref={ref} disabled={disabled} class={styles.button} onClick={onClick}>{children}</button>
+);
 
 export const ToggleSwitch: FunctionComponent<{
     onChanged?: (checked: boolean) => void,
@@ -407,16 +411,18 @@ export const ContainerBox: FunctionComponent<{ class?: string }> = ({ class: cla
 
 export const ExpansionContainer: FunctionComponent<{
     heading: string,
+    description?: string,
+    icon?: VNode<typeof Icon>,
     expanded?: boolean,
     buttons?: { icon: string, onClick: () => void }[]
-}> = ({ heading, expanded, buttons, children }) => {
+}> = ({ heading, description, icon, expanded, buttons, children }) => {
     const [show, setShow] = useState(expanded ?? false);
     const [container, setContainer] = useSafeState<HTMLDivElement | null>(null!);
 
     useEffect(() => {
         if (show) {
             container?.animate([
-                { height: '51px' },
+                { height: description ? '67px' : '51px' },
                 { height: `${container.offsetHeight}px` }
             ], {
                 duration: 200,
@@ -427,7 +433,7 @@ export const ExpansionContainer: FunctionComponent<{
         } else {
             container?.animate([
                 { height: `${container.offsetHeight}px` },
-                { height: '51px' }
+                { height: description ? '67px' : '51px' }
             ], {
                 duration: 200,
                 easing: 'ease-in-out'
@@ -449,7 +455,8 @@ export const ExpansionContainer: FunctionComponent<{
     
     const props = { 
         expanded: show ? '' : null,
-        collapsed: !show ? '' : null
+        collapsed: !show ? '' : null,
+        'has-icon': !nullOrUndefined(icon) ? '' : null
     }
 
 
@@ -458,10 +465,14 @@ export const ExpansionContainer: FunctionComponent<{
         e.stopPropagation();
         handler();
     }
+    const Wrapper = description ? 'span' : Fragment;
     return (
         <div ref={setContainer} class={styles['expansion-container']} { ...props }>
             <button onClick={() => {ensureHeight(); setShow(!show)}} class={styles['expansion-button']}>
-                <span children={heading}/>
+                <Wrapper>
+                    { description ? <h3 class={styles['main-content']}>{ heading }</h3> : <span children={heading}/>}
+                    { description ? <span class={styles.description}>{description}</span> : null }
+                </Wrapper>
                 <div class={styles.expand}/>
                 <div class={styles.buttons}>
                     {
@@ -473,6 +484,9 @@ export const ExpansionContainer: FunctionComponent<{
                         ))
                     }
                 </div>
+                <span class={styles['icon-container']}>
+                    {icon}
+                </span>
             </button>
             { show ? children : null }
         </div>
@@ -628,3 +642,34 @@ export const CustomScrollbar: FunctionComponent<{
         </div>
     )
 }
+
+export const ProgessSpinner: FunctionComponent<{
+    size?: number
+}> = ({ size: passedSize }) => {
+    const size = passedSize ?? 100;
+
+    return (
+        <span class={styles['progress-spinner']}>
+            <svg viewBox="0 0 100 100" style={{width: size, height: size}}>
+                <circle cx="50%" cy="50%" r="45"/>
+            </svg>
+        </span>
+    );
+}
+
+const ActionComponent: FunctionComponent<{
+    content: string,
+    icon?: VNode<typeof Icon>,
+    onClick?: () => void
+}> = ({ content, icon, onClick, children }) => (
+    <button onClick={onClick} class={styles.action}>
+        <h3 class={styles['main-content']}>{ content }</h3>
+        <span class={styles.description}>{children}</span>
+        <span class={styles['hover-arrow']}/>
+        <span class={styles['icon-container']}>
+            {icon}
+        </span>
+    </button>
+)
+
+export { ActionComponent as Action }

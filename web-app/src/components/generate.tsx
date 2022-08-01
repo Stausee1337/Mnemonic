@@ -1,4 +1,4 @@
-import { FunctionComponent, VNode } from "preact";
+import { ComponentProps, FunctionComponent, RenderableProps, VNode } from "preact";
 import { ToggleSwitch, Slider, TooltipButton, ExpansionContainer, ExpansionGroup, ContainerItem, ContainerBox, Button } from "../controls"
 import styles from "./generate.module.scss"
 import { random, classNames, nullOrUndefined, useSafeState } from "../utils"
@@ -9,21 +9,22 @@ import { Icon } from "../icons";
 import { NavigationFinished, RouteEvent, useRouter } from "../router";
 import { filter } from "rxjs";
 import { DialogResult, showMessageBox } from "../api";
+import { PhraseData } from "../types";
+import { Action, Transition } from "history";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
-const Word: FunctionComponent<{ idx: number }> = ({ idx, children }) => {
+export const Word: FunctionComponent<{ idx?: number }> = ({ idx, children }) => {
     // const [delay, _] = useState(random(0, 300));
-    const [animating, setAnimating] = useState(true);
+    const animating = idx !== undefined;
 
     const props = {
-        animating: '' ? animating : null
+        animating: animating ? '' : null
     }
     return <span 
         {...props}
-        onAnimationEnd={() => setAnimating(false)}
         className={styles.word} 
-        style={{ animationDelay: `${idx * 50}ms` }}>
+        style={{ animationDelay: `${(idx ?? 0) * 50}ms` }}>
         {children}
     </span>
 }
@@ -36,7 +37,7 @@ export interface PasswordForm {
     length: number
 }
 
-const PasswordSettings: FunctionComponent<{
+export const PasswordSettings: FunctionComponent<{
     data?: PasswordForm,
     onChange: (data: PasswordForm) => void
 }> = ({ onChange, data }) => {
@@ -84,6 +85,50 @@ function calculatePasswordEntropy(config: PasswordForm) {
     return config.length * Math.log2(poolSize);
 }
 
+function transitionBlocker(
+    transition: Transition,
+    unblock: () => void,
+    reblock: () => void
+) {
+    if (transition.action === Action.Replace) {
+        unblock();
+        transition.retry();
+        reblock();
+        return;
+    }
+    showMessageBox({
+        message: "Are you sure you want to leave the Generate Page?",
+        title: "Mnemonic",
+        detail: "You haven't printed your Mnemonic Phrase yet.\nWithout it you wont be able to recover your password!",
+        type: "warning",
+        buttons: ["Yes, Leave", "No, Stay"],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true,
+        checkboxLabel: "Do not ask me again"
+    }).then(data => {
+        if (data.response !== DialogResult.Cancel) {
+            console.assert(data.response === 0, "Respone should be zero");
+            // todo: store data.checkboxChecked decision in config db
+            unblock();
+            transition.retry(); 
+        }
+    });
+}
+
+function makeComponentNamespace<P>(
+    component: (props: RenderableProps<P>, componentType: string | FunctionComponent<any>) => VNode<any> | null
+): { 
+    ContainerItem: FunctionComponent<P>,
+    Div: FunctionComponent<P> 
+} {
+    return {
+        Div: (props) => component(props, 'div'),
+        ContainerItem: (props) => component(props, ContainerBox)
+    };
+}
+
+
 const colorMapping = {
     1: '#008035',
     0.75: '#30bf30',
@@ -92,10 +137,10 @@ const colorMapping = {
     0: ''
 }
 
-const PasswordOutput: FunctionComponent<{
+const PasswordOutput = makeComponentNamespace<{
     password: string | null,
     entropy: number
-}> = ({ password, entropy }) => {
+}>(({ password, entropy }, Element) => {
     const [fadeR, setFadeR] = useState(false);
     const [fadeL, setFadeL] = useState(false);
     const [scale, setScale] = useState<0 | 0.25 | 0.5 | 0.75 | 1>(null!);
@@ -131,7 +176,7 @@ const PasswordOutput: FunctionComponent<{
         const element = contentElement!;
         if (element.scrollWidth > element.offsetWidth) {
             let value = true;
-            if (element.scrollWidth - element.scrollLeft === 720) {
+            if (element.scrollWidth - element.scrollLeft === element.offsetWidth) {
                 value = false;
             }
             setFadeR(value);
@@ -142,7 +187,7 @@ const PasswordOutput: FunctionComponent<{
     }
 
     return (
-        <ContainerBox class={classNames({
+        <Element class={classNames({
             [styles['password-box']]: true,
             [styles['fade-r']]: fadeR,
             [styles['fade-l']]: fadeL,
@@ -153,9 +198,14 @@ const PasswordOutput: FunctionComponent<{
             <span 
                 style={{ transform: `scaleX(${scale})`, backgroundColor: colorMapping[scale] }} 
                 class={styles['strength-indicator']}/>
-        </ContainerBox>
+        </Element>
     );
-}
+})
+
+const POD = PasswordOutput.Div;
+export {
+    POD as PasswordOuput
+};
 
 export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
     config: initialConfig 
@@ -181,26 +231,11 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
             }
         })
 
-        const unblock = router.history.block(transition => {
-            showMessageBox({
-                message: "Are you sure you want to leave the Generate Page?",
-                title: "Mnemonic",
-                detail: "You haven't printed your Mnemonic Phrase yet.\nWithout it you wont be able to recover your password!",
-                type: "warning",
-                buttons: ["Yes, Leave", "No, Stay"],
-                defaultId: 1,
-                cancelId: 1,
-                noLink: true,
-                checkboxLabel: "Do not ask me again"
-            }).then(data => {
-                if (data.response !== DialogResult.Cancel) {
-                    console.assert(data.response === 0, "Respone should be zero");
-                    // todo: store data.checkboxChecked decision in config db
-                    unblock();
-                    transition.retry(); 
-                }
-            });
-        })
+        const reblock = () => {
+            const unblock = router.history.block(tr => transitionBlocker(tr, unblock, reblock))
+            return unblock;
+        }
+        const unblock = reblock();
 
         return () => {
             subscribtion.unsubscribe();
@@ -210,7 +245,14 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
 
     useEffect(() => {
         if (initialized !== 1) return;
+        if (!nullOrUndefined(router.location.state?.phraseData)) {
+            const data = router.location.state?.phraseData as PhraseData;
+            setWordlist(data.phrase);
+            setPassword(data.password);
+            return;
+        }
         Rust.generateMnemonicPhrase(initialConfig).then(data => {
+            router.history.replace(router.location, { phraseData: data })
             setWordlist(data.phrase);
             setPassword(data.password);
             setInitialzed(2);
@@ -282,7 +324,7 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
                         { icon: 'copy', onClick: copyPassword }
                     ]}
                     heading="Password" expanded>
-                    <PasswordOutput password={password} entropy={calculatePasswordEntropy(config)}/>
+                    <PasswordOutput.ContainerItem password={password} entropy={calculatePasswordEntropy(config)}/>
                 </ExpansionContainer>
             </ExpansionGroup>
         </div>

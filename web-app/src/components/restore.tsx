@@ -1,16 +1,14 @@
 import usePopper from "@restart/ui/esm/usePopper";
 import { FunctionComponent, JSX } from "preact";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import { forwardRef } from "preact/compat"
+import { MutableRef, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat"
 import { Rust } from "../interface";
-import { classNames, useForceUpdate, useValidationState } from "../utils";
+import { classNames, nullOrUndefined, useSafeState, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
-import { useValidation, ValidatorModel } from "../validation";
-import { Button } from "../controls";
-import { NavigationFinished, RouteEvent, useRouter } from "../router";
-import { filter } from "rxjs";
-
-type WordClassType = 'gray' | 'blue' | 'green' | 'red' | 'flushing';
+import { Action, Button, ExpansionContainer, ExpansionGroup, ProgessSpinner } from "../controls";
+import { Icon } from "../icons";
+import { useRouter } from "../router";
+import { PasswordOuput, PasswordSettings, Word as SimpleWord } from "./generate"
 
 function storeWordlist(wordlist: string[]) {
     (window as any)['wordlist'] = wordlist;
@@ -32,418 +30,531 @@ function getWordlistWithErrorHandler(): string[] {
 }
 
 function suggest(input: string): string[] {
-    return getWordlistWithErrorHandler().filter(predicate => predicate.startsWith(input)).slice(0, 5);
+    if (input.length === 0) {
+        return []
+    }
+    return getWordlistWithErrorHandler().filter(predicate => predicate.startsWith(input));
 }
 
-interface SuggestionComponent {
+function measureText(text: string): number {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    ctx.font = '500 18px / 34px -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, Ubuntu, "Droid Sans", sans-serif';
+    return Math.max(ctx.measureText(text).width, 1);
+}
+
+interface SuggestionControl {
     incrementSelection(): void;
     decrementSelection(): void;
+    readonly selection: number;
 }
 
-type SuggestionUpdateEvent = {
-    suggestionAmmount: number,
-    currentSelection: string,
-    isClick: boolean
-};
-
-type SuggestionsProps = { 
-    input: string,
-    onUpdate: (event: SuggestionUpdateEvent) => void
-};
-
-const Suggestions = forwardRef<SuggestionComponent, SuggestionsProps>(({ 
-    input, onUpdate
-}, ref) => {
+const Suggestions: FunctionComponent<{
+    slice: string,
+    suggestions: string[],
+    controlRef: MutableRef<SuggestionControl | null>,
+    onClick: (idx: number) => void,
+}> = ({ slice, suggestions, controlRef, onClick }) => {
     const [selected, setSelected] = useValidationState<number>(
         0,
         value => value >= suggestions.length ? 0 : value < 0 ? suggestions.length-1 : value
     )
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [hover, setHover] = useState<number>(-1);
 
     useEffect(() => {
-        onUpdate({
-            suggestionAmmount: suggestions.length,
-            currentSelection: suggestions[selected] ?? null!,
-            isClick: false
-        });
+        document.querySelector(`span.${styles.suggestion}.${styles.selected}`)?.scrollIntoViewIfNeeded(false);
     }, [selected])
 
-    useEffect(() => {
-        const newSuggestions = suggest(input);
-        setSuggestions(newSuggestions);
-        if (selected >= newSuggestions.length) {
-            setSelected(0);
-        }
-    }, [input])
-
-    useEffect(() => {
-        onUpdate({
-            suggestionAmmount: suggestions.length,
-            currentSelection: suggestions[selected] ?? null!,
-            isClick: false
-        });
-    }, [suggestions])
-
-    if (ref) {
-        (ref as any).current = {
-            incrementSelection: () => setSelected(selected + 1),
-            decrementSelection: () => setSelected(selected - 1)
-        }
+    controlRef.current = {
+        incrementSelection: () => setSelected(selected + 1),
+        decrementSelection: () => setSelected(selected - 1),
+        selection: selected
     }
-
     // calculateClassString
     const ccs = (i: number) => classNames({
         [styles.suggestion]: true,
         [styles.selected]: i === selected,
+        [styles.hover]: i === hover,
     });
     return (
         <>
             {
                 suggestions.map((word, idx) => <span 
                     class={ccs(idx)}
-                    onClick={() => onUpdate({
-                        suggestionAmmount: suggestions.length,
-                        currentSelection: suggestions[idx] ?? null!,
-                        isClick: true,
-                    })}
-                    onMouseOver={() => setSelected(idx)}
+                    onMouseDown={e => { e.stopPropagation(); onClick(idx); }}
+                    onMouseOver={() => setHover(idx)}
                 >
-                    {input}<b>{word.slice(input.length)}</b>
+                    <b>{slice}</b>{word.slice(slice.length)}
                 </span>)
             }
         </>
     )
-});
-
-type ObserverWrapperType = {
-    callback: ResizeObserverCallback | null,
-    observer: ResizeObserver
-};
-
-function getTextLength(text: string): number {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    ctx.font = "2.5rem 'Helvetica Neue', arial, sans-serif"
-    return ctx.measureText(text).width;
 }
 
-const Word: FunctionComponent<{ 
-    active: boolean,
-    current: boolean,
-    parentControls: PassedControlFunctions,
-    onSelected: () => void,
-}> = ({ 
-    active, current, onSelected, parentControls
-}) => {
-    const forceUpdate = useForceUpdate();
-    const [wordContainer, setSpan] = useState<HTMLSpanElement | null>(null);
-    const [suggestionContainer, setSuggestionContainer] = useState<HTMLSpanElement | null>(null);
-    const [input, setInput] = useState<HTMLInputElement | null>(null);
-    const suggestion = useRef<SuggestionComponent>(null);
-
-    const [value, setValue] = useState("");
-    const [selectedState, setSelected] = useState<SuggestionUpdateEvent>({
-        suggestionAmmount: null!,
-        currentSelection: null!,
-        isClick: false
-    })
-
-    const popper = usePopper(
-        wordContainer,
-        suggestionContainer,
-        {
-            placement: "bottom-start"
-        }
-    );
-
-    const validation = useValidation({
-        required: v => Boolean(v.length),
-        wordlist: v => getWordlistWithErrorHandler().includes(v)
-    });
-
-    const observerWrapper = useMemo<ObserverWrapperType>(() => {
-        const resizeObserver = new ResizeObserver((...args) => {
-            if (result.callback === null) return;
-            result.callback(...args);
-        });
-
-        const result: ObserverWrapperType = {
-            callback: null,
-            observer: resizeObserver
-        };
-
-        return result;
-    }, []);
-
-    useEffect(() => {
-        observerWrapper.observer.disconnect();
-        if (suggestionContainer)
-            observerWrapper.observer.observe(suggestionContainer);
-        return () => observerWrapper.observer.disconnect();
-    }, [suggestionContainer])
-
-    useEffect(() => {
-        if (active) {
-            input?.focus();
-        }
-    }, [active, input]);
-
-    useEffect(() => {
-        if (selectedState.isClick) {
-            finish();
-        }
-    }, [selectedState.isClick])
-
-    useEffect(() => {
-        if (input === null || wordContainer === null) return;
-        input.style.minWidth = (null as any);
-        input.style.width = `${getTextLength(value)}px`;
-        wordContainer.dataset.text = value.trimEnd();
-    }, [!active && value.length > 0])
-
-    useEffect(() => {
-        if (active && !current) {
-            validation.clear();
-            validation.validate(value);
-            forceUpdate();
-            if (input) {
-                input.style.width = (null as any);
-                input.select();
-            }
-        }
-    }, [active, current])
-
-    useLayoutEffect(() => {
-        popper.forceUpdate();
-    }, [active && value.length && selectedState.suggestionAmmount]);
-
-    observerWrapper.callback = (entries) => {
-        if (suggestionContainer === null) return;
-        if (entries.length > 1) return;
-
-        const event = entries[0];
-        if (event.target === suggestionContainer) {
-            const newWidth = event.contentRect.width - 40; 
-            input!.style.minWidth = newWidth > 120 ? `${newWidth}px` : `120px`;
-        }
-    };
-    
-    const inputHandler = () => {
-        if (input === null) return;
-        setValue(input.value);
-        input.parentElement!.dataset.text = input.value;
-    };
-
-    const changeWord = () => {
-        if (!active) return false;
-        if (value.length > 0) {
-            validation.finish(value);
-            parentControls.setValue(value);
-            validation.dirty = true;
-            return false;
-        }
-    }
-
-    const finish = () => {
-        const predictedValue = selectedState?.currentSelection ?? input?.value;
-        if (validation.finish(predictedValue)) {
-            setValue(selectedState.currentSelection);
-            parentControls.setValue(selectedState.currentSelection);
-            parentControls.spawnNew();
-            validation.dirty = true;
+const Word: FunctionComponent<{
+    onCursorInjection: (where: "before" | "after") => void,
+    onEdit: () => void,
+    isValid: boolean
+}> = ({ children, onCursorInjection, onEdit, isValid }) => {
+    const wordMouseDown = (e: JSX.TargetedMouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const element = e.currentTarget;
+        const rect = element.getBoundingClientRect();
+        const relativeX = e.clientX - (rect.left - 5);
+        if (relativeX > ((rect.width + 10) / 2)) {
+            onCursorInjection("after")
         } else {
-            forceUpdate();
-        }
-    };
-
-    const keyHandler = (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
-        if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
-            e.preventDefault();
-
-            switch(e.key) {
-                case 'ArrowUp':
-                    if (suggestion.current)
-                        suggestion.current.decrementSelection();
-                    break;
-                case 'ArrowDown':
-                    if (suggestion.current)
-                        suggestion.current.incrementSelection();
-                    break;
-                case 'Enter':
-                    finish();
-                    break;
-            }
-        } else if (e.key === 'Tab') {
-            if (changeWord()) {
-                e.preventDefault();
-            }
+            onCursorInjection("before")
         }
     }
 
-    const focusHandler = () => {
-        onSelected();
-    }
-
-    const blurHandler = () => {
-        if (active) {
-            validation.finish(value);
-            parentControls.setValue(value);
-            validation.dirty = true;
-        }
-    }
-
-    const valid2 = {
-        valid: validation.valid,
-        invalid: !validation.valid,
-        touched: validation.touched,
-        pristine: !validation.touched,
-        dirty: validation.dirty,
-        clean: !validation.dirty
-    }
-
-    const dynamicProps = { 
-        'placement-up': popper.placement === "top-start" ? '' : null,
-        'placement-down': popper.placement === "bottom-start" ? '' : null,
-        'active': active ? '' : null,
-        'inactive': !active ? '' : null
+    const props = {
+        valid: isValid ? '' : null,
+        invalid: !isValid ? '' : null
     }
     return (
-        <span ref={setSpan} 
-            class={classNames({
-                [styles.word]: true,
-                [styles['suggestion-active']]: active && value.length > 0 && selectedState.suggestionAmmount > 0,
-                [styles.valid]: validation.touched && validation.dirty && validation.valid && !active,
-                [styles.invalid]: validation.touched && validation.dirty && !validation.valid,
-            })}
-            {...dynamicProps}
-            data-validation={Object.entries(valid2).filter(([_, b]) => b).map(([k, _]) => k).join(' ')}
-        >
-            <ValidatorModel onChange={inputHandler} validation={validation}>
-                <input
-                    onBlur={!current ? blurHandler : undefined}
-                    onFocus={!active ? focusHandler : undefined}
-                    onKeyDown={keyHandler}
-                    type="text"
-                    autoCapitalize="off" autoComplete="off" autoCorrect="off" spellcheck={false}
-                    ref={setInput}
-                    value={value}
-                    size={1}/>
-            </ValidatorModel>
-            { active ? (
-            <span 
-                {...popper.attributes.popper}
-                style={popper.styles['popper'] as any}
-                ref={setSuggestionContainer} 
-                class={`${styles['suggestion-container']} ${value.length > 0 && selectedState.suggestionAmmount > 0 ? styles['show'] : ''}`}
-            >
-                { value.length > 0 ? 
-                    <Suggestions 
-                        ref={suggestion}
-                        input={value} 
-                        onUpdate={setSelected}
-                        /> : null }
-            </span>): null
-            }
+        <span class={styles.word} {...props} onMouseDown={wordMouseDown}>
+            { children }
+            <span class={styles.content} onDblClick={() => onEdit()} onMouseDown={e => e.stopPropagation()}>{children}</span>
         </span>
     );
 }
 
-const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
-
-function iterateWords(words: JSX.Element[]): JSX.Element[] {
-    const result: JSX.Element[] = [];
-
-    words.forEach((word, index) => {
-        result.push(word);
-        if (index < words.length - 1)
-            result.push(<Spacer/>) 
-    })
-
-    return result;
+interface InputControl {
+    clear(): void;
+    focus(): void;
+    validate(): void;
+    invalidate(): void;
 }
 
-type PassedControlFunctions = {
-    setValue: (value: string) => void,
-    spawnNew: () => void,
-    selectNext: () => void,
+type WordAddEvent = { 
+    wordCount: number,
+    valid: boolean | null,
+    done: boolean,
+    phrase: string[] | null
 };
 
-export const RestorePage: FunctionComponent = () => {
-    const [activeIndex, setIndex] = useState(-1);
-    const [words, setWords] = useState([""]);
-    const [isSNCMode, setSNC] = useState(false); // SelectedNonCurrent
+const IntelligentWordInput: FunctionComponent<{
+    words?: string[],
+    controlRef: MutableRef<InputControl | null>,
+    onWordAdded: (event: WordAddEvent) => void
+}> = ({ controlRef, words: initialWords, onWordAdded }) => {
+    const [phraseValid, setPhraseValid] = useState<boolean | null>(null);
+    const [words, setWords] = useValidationState<string[]>(initialWords ?? [], value => {
+        const done = value.length === 12;
+        const valid = done ? value.every(v => validate(v)) : null;
+        onWordAdded({
+            done,
+            valid,
+            phrase: valid ? value : null,
+            wordCount: value.length,
+        });
+        return value;
+    }); 
+    const [slice, setSlice] = useState("");
+    const [isEmpty, setIsEmpty] = useState(false);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [slicingIndex, setIndex] = useState(words.length);
+    const [input, setInput] = useSafeState<HTMLInputElement | null>(null!);
+    const [suggestionContainer, setContainer] = useSafeState<HTMLDivElement | null>(null!);
+    const focusRef = useRef(true);
+    const suggestionControlRef = useRef<SuggestionControl | null>(null!);
 
-    const router = useRouter()!;
+    const popper = usePopper(
+        input,
+        suggestionContainer,
+        {
+            placement: "bottom-start",
+            modifiers: [
+                { name: "offset", options: { offset: [-4, 0] } }
+            ]
+        }
+    )
+
+    useLayoutEffect(() => {
+        popper.update();
+    }, [slicingIndex, words, slice])
+    
+    useEffect(() => {
+        if (focusRef.current) {
+            input?.focus();
+        } else {
+            focusRef.current = true;
+        }
+        inputChange();
+        updateSlice();
+    }, [slicingIndex])
+
+    const emptyChange = () => {
+        const inputValue = input?.value ?? "";
+        setIsEmpty(words.length === 0 && inputValue.length === 0)
+    }
+
+    useEffect(emptyChange, [words])
+
+    controlRef.current = {
+        invalidate: () => setPhraseValid(false),
+        validate: () => setPhraseValid(true),
+        clear: () => {
+            setWords([]);
+            setIndex(0);
+        },
+        focus: () => input?.focus()
+    };
+
+    const inputChange = () => {
+        if (nullOrUndefined(input)) return;
+        input!.style.width = `${measureText(input!.value)}px`;
+        emptyChange();
+    }
+
+    const setCursorAtEnd = (e: JSX.TargetedEvent<HTMLElement>) => {
+        if (phraseValid === false) {
+            setPhraseValid(null);
+        }
+        if (input?.value.trim() !== "") {
+            words.splice(slicingIndex, 0, input!.value.toLowerCase())
+            setWords([...words])
+            input!.value = "";
+        }
+        focusRef.current = false,
+        setIndex(words.length);
+    }
+
+    const inputKeyDown = (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+        setPhraseValid(null);
+        switch (e.code) {
+            case "Tab":
+                e.preventDefault();
+                if (input?.value.trim() !== "") {
+                    const word = words.splice(slicingIndex, 1, input!.value.toLowerCase())[0] ?? "";
+                    console.log(words);
+                    setWords([...words])
+                    setIndex(slicingIndex+1);
+                    input!.value = word;
+                    input!.select();
+                } else {
+                    const word = words.splice(slicingIndex, 1)[0] ?? "";
+                    setWords([...words])
+                    input!.value = word;
+                    inputChange();
+                    input!.select();
+                    // input!.setSelectionRange(0, 0);
+                }
+                break;
+            case "Space":
+                {
+                    e.preventDefault();
+                    let value = (input?.value ?? "").slice(0, input?.selectionStart ?? 0);
+                    const rest = (input?.value ?? "").slice(input?.selectionStart!);
+                    value = suggestions[suggestionControlRef.current?.selection ?? 0] ?? value;
+                    if (value.trim() !== "") {
+                        const word = words.splice(slicingIndex, 1, value.toLowerCase())[0] ?? rest;
+                        setWords([...words])
+                        setIndex(slicingIndex+1);
+                        input!.value = word;
+                        input!.setSelectionRange(0, 0);
+                    }
+                }
+                break;
+            case "Enter": 
+                {
+                    e.preventDefault();
+                    let value = (input?.value ?? "").slice(0, input?.selectionStart ?? 0);
+                    value = suggestions[suggestionControlRef.current?.selection ?? 0] ?? value;
+                    if (value.trim() !== "") {
+                        words.splice(slicingIndex, 0, value)
+                        setWords([...words])
+                        input!.value = "";
+                    }
+                    setIndex(words.length);
+                }
+                break;
+            case "Backspace":
+                if (input?.selectionStart === 0 && 
+                    input?.selectionEnd === 0 &&
+                    words.length > 0
+                    ) {
+                    e.preventDefault();
+                    const currentInputLength = input!.value.length;
+                    const newWord = words.splice(slicingIndex-1, 1)!;
+                    console.log(newWord);
+                    input!.value = newWord + input!.value;
+                    input!.selectionStart = input.value.length - currentInputLength;
+                    input!.selectionEnd = input.value.length - currentInputLength;
+                    setWords([...words])
+                    setIndex(words.length);
+                }
+                break;
+            case "ArrowUp":
+                e.preventDefault();
+                suggestionControlRef.current?.decrementSelection();
+                break;
+            case "ArrowDown":
+                e.preventDefault();
+                suggestionControlRef.current?.incrementSelection();
+                break;
+            default:
+                if (e.key.length === 1 && !/^[a-zA-Z]$/.test(e.key)) {
+                    e.preventDefault();
+                }
+                break;
+        }
+    }
+
+    const updateSlice = () => {
+        if (!nullOrUndefined(input)) {
+            const slice = input!.value.slice(0, input!.selectionStart ?? 0);
+            setSlice(slice);
+            setSuggestions(suggest(slice));
+        }
+    }
+
+    const onClickSelection = (idx: number) => {
+        let value = (input?.value ?? "").slice(0, input?.selectionStart ?? 0);
+        const rest = (input?.value ?? "").slice(input?.selectionStart!);
+        value = suggestions[idx ?? 0] ?? value;
+        if (value.trim() !== "") {
+            const word = words.splice(slicingIndex, 1, value.toLowerCase())[0] ?? rest;
+            setWords([...words])
+            setIndex(slicingIndex+1);
+            input!.value = word;
+            input!.setSelectionRange(0, 0);
+        }
+        setTimeout(() => input?.focus(), 0);
+    }
+
+    // edit handler factory
+    const ehf = (idx: number) => () => {
+        setPhraseValid(null);
+        const word = words.splice(idx, 1)[0] ?? "";
+        setWords([...words]);
+        setIndex(idx);
+        input!.value = word;
+        inputChange();
+        input!.select();
+    }
+
+    // cursor handler factory
+    const chf = (idx: number) => (where: "before" | "after") => {
+        setPhraseValid(null);
+        if (input!.value !== "") {
+            words.splice(slicingIndex, 0, input!.value.toLowerCase());
+            setWords([...words]);
+            input!.value = "";
+        }
+        switch (where) {
+            case "before":
+                setIndex(idx)
+                break;
+            case "after":
+                setIndex(idx+1)
+                break;
+        }
+    }
+
+    const validate = (word: string) => getWordlistWithErrorHandler().includes(word);
+    const props = { disabled: phraseValid === true ? '' : null, empty: isEmpty ? '' : null } as any;
+    return (
+        <div {...props} class={styles['styled-box']} onMouseDown={setCursorAtEnd} onClick={() => input?.focus()}>
+            <div class={styles.editor}>
+                {
+                    words.slice(0, slicingIndex)
+                        .map((w, i) => <Word 
+                            onEdit={ehf(i)} 
+                            onCursorInjection={chf(i)}
+                            isValid={validate(w) && (phraseValid??true)}
+                            >
+                            {w}
+                        </Word>)
+                }
+                <input 
+                    ref={setInput}
+                    onBlur={setCursorAtEnd}
+                    onInput={inputChange}
+                    onMouseDown={e => e.stopPropagation()}
+                    onKeyDown={inputKeyDown}
+                    onKeyUp={updateSlice}
+                    onPaste={e => e.preventDefault()}
+                    onCopy={e => e.preventDefault()}
+                    type="text"
+                    size={1}
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellcheck={false}
+                />
+                {
+                    words.slice(slicingIndex, words.length)
+                        .map((w, i) => <Word 
+                            onEdit={ehf(i+slicingIndex)} 
+                            onCursorInjection={chf(i+slicingIndex)}
+                            isValid={validate(w) && (phraseValid??true)}>
+                                {w}
+                            </Word>)
+                }
+            </div>
+            { createPortal((
+                <div 
+                    { ...popper.attributes.popper }
+                    style={(popper.styles.popper) as any}
+                    ref={setContainer}
+                    class={classNames({
+                        [styles['editor-live-suggestions']]: true,
+                        [styles['hidden']]: suggestions.length <= 0
+                    })}
+                >
+                    {suggestions.length > 0 ? (<Suggestions
+                        slice={slice}
+                        suggestions={suggestions}
+                        controlRef={suggestionControlRef}
+                        onClick={onClickSelection}
+                    />) : null}
+                </div>), 
+                document.body
+            ) }
+        </div>
+    );
+}
+
+const InputForm: FunctionComponent<{
+    onNext: (phrase: string[]) => void
+}> = ({ onNext }) => {
+    const [wordCount, setWordCount] = useState(0);
+    const [buttonDisabled, setDisabled] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [buttonText, setButtonText] = useState("Submit");
+    const inputControlRef = useRef<InputControl | null>(null);
+    const [button, setButton] = useSafeState<HTMLButtonElement | null>(null!);
+    const [formError, setFormError] = useState("");
+    const [data, setData] = useState<any>({  });
+
+    const history = useRouter()?.history!;
+
+    const onWordAdd = (event: WordAddEvent) => {
+        setWordCount(event.wordCount);
+        setFormError("");
+        if (event.done) {
+            setDisabled(!event.valid!);
+            setLoading(true);
+            Rust.checkChecksum(event.phrase!).then(response => {
+                console.log("hallo welt", response);
+                if (!response) {
+                    setButtonText("Clear");
+                    setLoading(false);
+                    button!.focus();
+                    inputControlRef.current?.invalidate();
+                    setFormError("Checksum calculations mismatch; maybe you misstyped something.")
+                } else {
+                    inputControlRef.current?.validate();
+                    setTimeout(onNext, 500, event.phrase);
+                }
+            })
+        }
+    }
+
+    const onButtonClick = () => {
+        if (buttonText === "Submit") {
+            setDisabled(true);
+            setFormError(`12 words are required. You've got ${wordCount}`);
+        } else if (buttonText === "Clear") {
+            inputControlRef.current?.clear();
+            setButtonText("Submit");
+            inputControlRef.current?.focus();
+        }
+    }
+
+    return (
+        <>
+            <div class={styles['form-container']}>
+                <h6>Mnemonic Phrase</h6>
+                <IntelligentWordInput controlRef={inputControlRef} onWordAdded={onWordAdd}/>
+                <span class={styles.error}>{ formError }</span>
+                <div class={styles['status-bar']}>
+                    <h6>{wordCount}/12</h6>
+                    <Button ref={setButton} disabled={buttonDisabled} onClick={onButtonClick}>
+                        { !loading ? buttonText : <ProgessSpinner size={21} /> }
+                    </Button>
+                </div>
+            </div>
+            <div>
+                <h6>Settings</h6>
+                <ExpansionGroup>
+                    <ExpansionContainer
+                        heading="Password Generation Settings"
+                        icon={<Icon name="option-sliders" height={28}/>}
+                        description="Change the length and the type of characters that are included in your password">
+                        <PasswordSettings data={data} onChange={setData}/>
+                    </ExpansionContainer>
+                </ExpansionGroup>
+            </div>
+        </>
+    );
+}
+
+
+const PasswordDisplay: FunctionComponent<{
+    phrase: string[],
+}> = ({ phrase }) => {
+    const [password, setPassword] = useState<string | null>(null!);
+    const [config, setConfig] = useState<any>({
+        characters: true,
+        digits: true,
+        punctuation: true,
+        special: false,
+        length: 48
+    });
 
     useEffect(() => {
-        const subscribtion = router.events.pipe(
-            filter((e: RouteEvent): e is NavigationFinished => e instanceof NavigationFinished)
-        ).subscribe({
-            next() {
-                setIndex(0);
-                subscribtion.unsubscribe();
-            }
-        })
+        Rust.fromMnemonicPhrase(phrase, config).then(data => {
+            setPassword(data.password);
+        }).catch(console.error);
+    }, [config]);
 
+    return (
+        <>
+            <h6>Mnemonic</h6>
+            <div class={`${styles['styled-box']} ${styles.simple} ${styles.flex}`}>
+                { phrase.map(w => <SimpleWord>{w}</SimpleWord>) }
+            </div>
+            <ExpansionGroup>
+                <ExpansionContainer
+                    heading="Password Generation Settings"
+                    icon={<Icon name="option-sliders" height={28}/>}
+                    description="Change the length and the type of characters that are included in your password">
+                    <PasswordSettings data={config} onChange={setConfig}/>
+                </ExpansionContainer>
+            </ExpansionGroup>
+            <h6>Password Output</h6>
+            <div class={`${styles['styled-box']} ${styles.simple}`}>
+                <PasswordOuput entropy={0} password={password ?? ""}/>
+            </div>
+        </>
+    );
+}
+
+export const RestorePage: FunctionComponent = () => {
+    const [page, setPage] = useState<"form" | "password">("form");
+    const phraseRef = useRef<string[] | null>([]);
+
+    useEffect(() => {
         Rust.getWordlist().then(data => {
             let wordlist = data.split('\r\n')
             wordlist.pop()
             wordlist = wordlist.sort((a, b) => a.localeCompare(b))
             storeWordlist(wordlist);
         }).catch(console.error); // todo: implement global error handler
-    }, [])
+    })
 
-    const functions: PassedControlFunctions = {
-        setValue(word) {
-            words[activeIndex] = word;
-        },
-        spawnNew() {
-            if (words.length === 12) {
-                setIndex(-1);
-                document.body.focus();
-                return;
-            }
-            console.log(isSNCMode, activeIndex, words.length);
-            if (!isSNCMode) {
-                setWords([...words, ""]);
-                setIndex(activeIndex + 1);
-            } else {
-                setIndex(words.length - 1);
-                setSNC(false);
-            }
-        },
-        selectNext() {
-            if (activeIndex === words.length-1) {
-                functions.spawnNew();
-            }
-            setIndex(activeIndex + 1);
-        },
-    };
-
-    // selectionHandlerFactory
-    const shf = (idx: number) => () => {
-        console.log(idx);
-        setIndex(idx);
-        setSNC(words.length-1 !== idx);
-    }
-
+    console.log(phraseRef.current);
     return (
-        <>
-            <h3>Restore</h3>
-            <div class={styles['grid-view']}>
-                <div class={styles['word-box']}>
-                    { iterateWords(words.map((_, i) => <Word 
-                        key={`word-${i}`}
-                        active={i === activeIndex}
-                        current={words.length-1 === i}
-                        parentControls={i === activeIndex ? functions : null!}
-                        onSelected={shf(i)}
-                    />)) }
-                </div>
-                <div class={styles.misc}>
-                    <Button>Calculate Password</Button>
-                </div>
-            </div>
-        </>
+        <div class={classNames([ styles['grid-container'], styles[page] ])}>
+            { (page === "form" ? (
+                <InputForm onNext={phrase => {phraseRef.current = phrase; setPage("password"); }}/>
+            ) : (
+                <PasswordDisplay phrase={phraseRef.current!}/>
+            )) }
+        </div>
     );
 }

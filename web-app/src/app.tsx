@@ -59,7 +59,16 @@ export const App: FunctionComponent = () => {
                                         return {
                                             element: <RestorePage/>,
                                             data: {
-                                                title: "Retrieve - Mnemonic"
+                                                title: "Retrieve - Mnemonic",
+                                                heading: "Retrieve"
+                                            }
+                                        }
+                                    case '/retrieve/settings':
+                                        return {
+                                            element: <h1>Not Found</h1>,
+                                            data: {
+                                                title: "Password Settings - Mnemonic",
+                                                heading: "Settings"
                                             }
                                         }
                                     default:

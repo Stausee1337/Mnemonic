@@ -134,6 +134,42 @@ pub fn from_mnemonic_phrase(invoke: Invoke) -> Option<()> {
     Some(())
 }
 
+fn check_checksum_impl(phrase: Vec<String>) -> Result<bool, String> {
+    Python::with_gil(|py| {
+        let locals = CONTEXT.as_ref(py);
+        
+        let function = locals.get_item("check_checksum")
+            .ok_or("Can't find function".to_string())?;
+
+        let phrase = phrase.to_object(py);        
+        let result = function.call(PyTuple::new(py, vec![phrase]), None)
+            .map_err(|err| err.to_string())?;
+        
+        Ok(result.extract().map_err(|err| err.to_string())?)
+    })
+}
+
+pub fn check_checksum(invoke: Invoke) -> Option<()> {
+    let arguments = deserialize_arguments(invoke.clone())?;
+    let mut iter = arguments.iter();
+    let resolver = invoke.resolver.clone();
+
+    let result = check_checksum_impl(
+        get_argument(iter.next()?, resolver.clone())?,
+    );
+
+    match result {
+        Ok(data) => {
+            resolver.resolve(data);
+        }
+        Err(err) => {
+            resolver.reject(err);
+        } 
+    }
+
+    Some(())
+}
+
 #[pyfunction]
 fn get_wordlist() -> Vec<String> {
     WORDLIST.clone()

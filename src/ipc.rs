@@ -302,6 +302,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "fromMnemonicPhrase" => {
             mnemonic::from_mnemonic_phrase(invoke);
         }
+        "checkChecksum" => {
+            mnemonic::check_checksum(invoke);
+        }
         "getWordlist" => {
             commands::get_wordlist(invoke);
         }

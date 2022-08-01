@@ -29,6 +29,23 @@ div.card {
     }
 }
 
+$height: 3.4rem;
+span.word {
+    height: $height;
+    font-weight: 500;
+    font-size: 1.8rem;
+    color: white;
+    background-color: $prime;
+    border-radius: calc($height * 0.48);
+    padding: 0 1.6rem;
+    line-height: $height;
+    
+    &[animating] {
+        opacity: 0;
+        animation: pop 250ms linear forwards;
+    }
+}
+
 div.word-container {
     display: flex;
     flex-direction: row;
@@ -57,21 +74,6 @@ div.word-container {
         opacity: 0;
         animation: pop 500ms linear forwards;
         line-height: 5rem;
-    }
-
-    $height: 3.4rem;
-    span.word {
-        height: $height;
-        font-weight: 500;
-        font-size: 1.8rem;
-        color: white;
-        background-color: $prime;
-        border-radius: calc($height * 0.48);
-        padding: 0 1.6rem;
-        line-height: $height;
-        opacity: 0; animation: pop 250ms linear forwards;
-
-        
     }
 
     span.spacer {

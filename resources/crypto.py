@@ -7,7 +7,7 @@ import functools
 from typing import List
 from operator import itemgetter
 
-export = lambda x: x
+export = lambda x: x  # public api
 wordlist: List[str] = None
 # table_enc7 = r"""abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!§$%/()´`^°*~#|,:._-€@\?"[{\'&>;+}=]<"""
 
@@ -75,7 +75,7 @@ def retrieve_bitstr(chunks):
     return bitstr, checksum
 
 
-def calc_cecksum(bitstr):
+def calc_checksum(bitstr):
     return hashlib.sha256(bitstr).digest()[1] & 0b1111
 
 
@@ -217,7 +217,7 @@ def encode_log(binstr, chars, length):
 @export
 def generate_phrase(config):
     seed = os.urandom(16)
-    checksum = calc_cecksum(seed)
+    checksum = calc_checksum(seed)
     
     binstr = (int.from_bytes(seed, byteorder='big') << 4) | checksum
     return generate_mnemonic(binstr), encode_log(hash_extend(seed, config), config)
@@ -227,7 +227,14 @@ def generate_phrase(config):
 def from_phrase(phrase, config):
     chunks = retrieve_chunks(phrase)
     bitstr, checksum = retrieve_bitstr(chunks)
-    if checksum != calc_cecksum(bitstr):
+    if checksum != calc_checksum(bitstr):
         raise Exception("ChecksumError: Checksum doesn't match! Probably you misstyped something.")
 
     return phrase, encode_log(hash_extend(bitstr, config), config)
+
+
+@export
+def check_checksum(phrase):
+    chunks = retrieve_chunks(phrase)
+    bitstr, checksum = retrieve_bitstr(chunks)
+    return checksum == calc_checksum(bitstr)

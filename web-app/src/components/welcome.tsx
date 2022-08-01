@@ -1,23 +1,10 @@
-import { FunctionComponent, VNode } from "preact";
+import { FunctionComponent } from "preact";
 import styles from "./welcome.module.scss";
-import { Checkbox, Title } from "../controls";
+import { Action, Checkbox, ProgessSpinner } from "../controls";
 import { Icon } from "../icons";
 import { useRouter } from "../router";
 
-export const Action: FunctionComponent<{
-    content: string,
-    icon?: VNode<typeof Icon>,
-    onClick?: () => void
-}> = ({ content, icon, onClick, children }) => (
-    <button onClick={onClick} class={styles.action}>
-        <h3 class={styles['main-content']}>{ content }</h3>
-        <span class={styles.description}>{children}</span>
-        <span class={styles['hover-arrow']}/>
-        <span class={styles['icon-container']}>
-            {icon}
-        </span>
-    </button>
-)
+
 
 export const WelcomePage: FunctionComponent = () => {
     const history = useRouter()!.history;
