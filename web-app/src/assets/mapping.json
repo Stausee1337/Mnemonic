@@ -9,6 +9,9 @@
     "restore-password": 60007,
     "settings-gear": 60008,
     "tick-thin": 60009,
-    "tick": 60010,
-    "update": 60011
+    "close-thick": 60010,
+    "update": 60011,
+    "info": 60012,
+    "error": 60013,
+    "warning": 60014
 }

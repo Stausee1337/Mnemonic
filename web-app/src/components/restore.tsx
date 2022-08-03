@@ -527,7 +527,7 @@ const PasswordDisplay: FunctionComponent<{
                 </ExpansionContainer>
             </ExpansionGroup>
             <h6>Password Output</h6>
-            <div class={`${styles['styled-box']} ${styles.simple}`}>
+            <div class={`${styles['styled-box']} ${styles.simple} ${styles['hover-action']}`}>
                 <PasswordOuput entropy={0} password={password ?? ""}/>
             </div>
         </>

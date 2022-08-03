@@ -1,97 +1,105 @@
-import { createContext, FunctionComponent } from "preact";
-import { useContext, useMemo, useState } from "preact/hooks";
-import { createPortal } from "preact/compat";
+import { createContext, FunctionComponent, JSX, VNode } from "preact";
+import { MutableRef, useContext, useEffect, useMemo, useState } from "preact/hooks";
+import { createPortal, useRef } from "preact/compat";
 import styles from "./notifications.module.scss"
 import { Icon } from "./icons";
+import { classNames, hasString } from "./utils";
+import { Button } from "./controls";
 
 interface NotificationContextObject {
-    activeNaviations: NotificationObject[];
-    eventId: number;
-    notifyChanges?: () => void;
-
-    push(n: NotificationObject): void;
-    remove(self: NotificationObject): boolean;
-    fadeOut(self: NotificationObject): void;
+    push(n: NotificationConfig): number;
+    remove(id: number): boolean;
+    fadeOut(id: number): void;
 }
 
-interface NotificationObject {
-    class: 'error' | 'success' | 'info',
-    closeButton: boolean,
-    // controls: {},
-    title: string,
-    content?: string,
-    stayOpen?: boolean;
-    _removing?: boolean;
-    _id?: string;
+export interface NotificationConfig {
+    type: 'error' | 'warning' | 'info',
+    content: string,
+    buttons?: VNode<typeof Button>[]
+}
+
+interface NotificationObject extends NotificationConfig {
+    removeFunctionRef: MutableRef<(() => void) | null>
 }
 
 const NotificationContext = createContext<NotificationContextObject>(null!);
 
-const NotificationArea: FunctionComponent = ({ }) => {
-    let notifications = useNotifications();
+const NotificationComponent: FunctionComponent<{
+    type: 'error' | 'warning' | 'info',
+    content: string,
+    buttons: VNode<typeof Button>[]
+    removeControlRef: MutableRef<(() => void) | null>,
+    onRemove: () => void
+}> = ({ type, content, buttons, removeControlRef, onRemove }) => {
+    const [animatingOut, setAnimating] = useState(false);
+    const animatingOutRef = useRef<{ value: boolean, set: (v: boolean) => void }>();
+    animatingOutRef.current = { value: animatingOut, set: setAnimating };
 
+    const removeSelf = removeControlRef.current = useMemo(() => () => {
+        if (animatingOutRef.current?.value === false) {
+            animatingOutRef.current?.set(true);
+            setTimeout(() => {
+                onRemove();
+            }, 300)
+        }
+    }, []);
+
+    const props = {[type]: ''}
     return (
-        <div class={styles.area}>
-            { notifications.activeNaviations.map(config => {
-                const removing = config._removing ?? false;
-                const fadeOut = removing ? 'fade-out' : undefined;
-                const endTrigger = removing ? () => notifications.remove(config) : undefined;
-                return (
-                <div key={config._id!} onAnimationEnd={endTrigger} class={`${styles.notification} ${styles[config.class]} ${styles[fadeOut!]}`}>
-                    <h1>{ config.title }</h1>
-                    { config.closeButton ? <span onClick={() => notifications.fadeOut(config)} class={styles['close-button']} children={<Icon width={16} name="close"/>}/> : null }
-                    { config.content ? <article children={config.content} /> : null }
-                </div>);
-            }) }
+        <div 
+            {...props}
+            class={classNames({
+                [styles.notification]: true,
+                [styles['fade-out']]: animatingOut
+            })}>
+            <span><Icon name={type} height={18}/></span>
+            <div class={styles['main-content']}>
+                { content }
+                <button onClick={removeSelf} class={styles['close-button']}>
+                    <Icon name="close-thick"/>
+                </button>
+            </div>
+            { buttons.length > 0 ? <div class={styles.buttons}>
+                { buttons }
+            </div> : null}
         </div>
     );
 }
 
-export function useNotifier(): (n: NotificationObject) => (() => void) {
+const NotificationArea: FunctionComponent = ({ children }) => <div class={styles.area} children={children}/>
+
+export function useNotifier(): (n: NotificationConfig) => (() => void) {
     const ctx = useContext(NotificationContext);
     return (n) => {
-        ctx.push(n);
-        return () => ctx.fadeOut(n); // close fn
+        const id = ctx.push(n);
+        return () => ctx.fadeOut(id); // close fn
     }
 }
 
-function useNotifications(): NotificationContextObject {
-    const notification = useContext(NotificationContext);
-    const [value, setState] = useState(0);
-    notification.notifyChanges = () => {
-        setState(value + 1)
-    };
-
-    return notification;
-}
-
 export const NotificationProvider: FunctionComponent = ({ children }) => {
+    const [activeNotifications, setNotifications] = useState<Map<number, NotificationObject>>(new Map());
+
     const notificationObject = useMemo<NotificationContextObject>(() => {
         
         let res: NotificationContextObject = {
-            activeNaviations: [],
-            eventId: 0,
-            push(n) {
-                if (!n.closeButton && !n.stayOpen) {
-                    setTimeout(() => res.fadeOut(n), 5000);
-                }
-                n._id = `${Date.now()}`;
-                res.activeNaviations.push(n);
-                if (res.notifyChanges) res.notifyChanges();
+            push(config) {
+                const id = Date.now() ^ hasString(config.content);
+                activeNotifications.set(id, {
+                    ...config,
+                    removeFunctionRef: { current: null }
+                });
+                setNotifications(new Map(activeNotifications));
+                return id;
             },
-            remove(self) {
-                const i = res.activeNaviations.indexOf(self)
-                if (i > -1) {
-                    res.activeNaviations.splice(i, 1);
-                    if (res.notifyChanges) res.notifyChanges();
-                    
-                    return true;
+            remove(id) {
+                try {
+                    return activeNotifications.delete(id);
+                } finally {
+                    setNotifications(new Map(activeNotifications));
                 }
-                return false;
             },
-            fadeOut(self) {
-                self._removing = true;
-                if (res.notifyChanges) res.notifyChanges();
+            fadeOut(id) {
+                activeNotifications.get(id)?.removeFunctionRef.current?.call(undefined);
             }
         };
 
@@ -102,7 +110,22 @@ export const NotificationProvider: FunctionComponent = ({ children }) => {
         
         <NotificationContext.Provider value={notificationObject}>
             { children }
-            { createPortal(<NotificationArea/>, document.body) }
+            { createPortal(
+                <NotificationArea
+                    children={Array.from(activeNotifications).map(([key, value]) => {
+                        return (
+                            <NotificationComponent 
+                                key={key}
+                                type={value.type}    
+                                content={value.content}
+                                buttons={value.buttons ?? []}
+                                removeControlRef={value.removeFunctionRef}
+                                onRemove={() => notificationObject.remove(key)}
+                            />
+                        );
+                    })}/>,
+                document.body)
+            }
         </NotificationContext.Provider>
     );
 }
