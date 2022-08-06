@@ -5,10 +5,18 @@ import { createPortal } from "preact/compat"
 import { Rust } from "../interface";
 import { classNames, nullOrUndefined, useSafeState, useValidationState } from "../utils";
 import styles from "./restore.module.scss";
-import { Action, Button, ExpansionContainer, ExpansionGroup, ProgessSpinner } from "../controls";
+import { Button, ExpansionContainer, ExpansionGroup, ProgessSpinner } from "../controls";
 import { Icon } from "../icons";
-import { useRouter } from "../router";
-import { PasswordOuput, PasswordSettings, Word as SimpleWord } from "./generate"
+import {
+    PasswordForm, 
+    passwordGenerationRulesDefault, 
+    PasswordOuput,
+    PasswordSettings as InnerPassworSettings,
+    PhraseData, 
+    Word as SimpleWord 
+} from "./generate"
+import { useNotifier } from "../notification";
+import { Config } from "../config";
 
 function storeWordlist(wordlist: string[]) {
     (window as any)['wordlist'] = wordlist;
@@ -418,8 +426,40 @@ const IntelligentWordInput: FunctionComponent<{
     );
 }
 
+const PasswordSettings: FunctionComponent<{
+    data: PasswordForm,
+    onChange: (data: PasswordForm) => void
+}> = ({ data, onChange }) => {
+    const notify = useNotifier();
+
+    const saveToDb = () => {
+        Config.globalConfig.passwordGenerationRules = data as any;
+        const closeFn = notify({
+            type: "info",
+            content: "Password generation rules saved!"
+        })
+        setTimeout(() => {
+            closeFn();
+        }, 3000)
+    }
+
+    return (
+        <ExpansionGroup>
+            <ExpansionContainer
+                buttons={[
+                    { icon: 'save', onClick: saveToDb }
+                ]}
+                heading="Password Generation Settings"
+                icon={<Icon name="option-sliders" height={28}/>}
+                description="Change the length and the type of characters that are included in your password">
+                <InnerPassworSettings data={data} onChange={onChange}/>
+            </ExpansionContainer>
+        </ExpansionGroup>
+    );
+}
+
 const InputForm: FunctionComponent<{
-    onNext: (phrase: string[]) => void
+    onNext: (phrase: string[], config: PasswordForm) => void
 }> = ({ onNext }) => {
     const [wordCount, setWordCount] = useState(0);
     const [buttonDisabled, setDisabled] = useState(false);
@@ -428,9 +468,14 @@ const InputForm: FunctionComponent<{
     const inputControlRef = useRef<InputControl | null>(null);
     const [button, setButton] = useSafeState<HTMLButtonElement | null>(null!);
     const [formError, setFormError] = useState("");
-    const [data, setData] = useState<any>({  });
+    const [config, setConfig] = useState<PasswordForm>(passwordGenerationRulesDefault);
 
-    const history = useRouter()?.history!;
+    useEffect(() => {
+        Config.globalConfig.passwordGenerationRules.getOrDefault(passwordGenerationRulesDefault)
+            .then(rules => {
+                setConfig(rules);
+            });
+    }, [])
 
     const onWordAdd = (event: WordAddEvent) => {
         setWordCount(event.wordCount);
@@ -448,7 +493,7 @@ const InputForm: FunctionComponent<{
                     setFormError("Checksum calculations mismatch; maybe you misstyped something.")
                 } else {
                     inputControlRef.current?.validate();
-                    setTimeout(onNext, 500, event.phrase);
+                    setTimeout(() => onNext(event.phrase!, config), 500);
                 }
             })
         }
@@ -480,14 +525,7 @@ const InputForm: FunctionComponent<{
             </div>
             <div>
                 <h6>Settings</h6>
-                <ExpansionGroup>
-                    <ExpansionContainer
-                        heading="Password Generation Settings"
-                        icon={<Icon name="option-sliders" height={28}/>}
-                        description="Change the length and the type of characters that are included in your password">
-                        <PasswordSettings data={data} onChange={setData}/>
-                    </ExpansionContainer>
-                </ExpansionGroup>
+                <PasswordSettings data={config} onChange={setConfig}/>
             </div>
         </>
     );
@@ -496,19 +534,45 @@ const InputForm: FunctionComponent<{
 
 const PasswordDisplay: FunctionComponent<{
     phrase: string[],
-}> = ({ phrase }) => {
+    config: PasswordForm
+}> = ({ phrase, config: initialConfig }) => {
     const [password, setPassword] = useState<string | null>(null!);
-    const [config, setConfig] = useState<any>({
-        characters: true,
-        digits: true,
-        punctuation: true,
-        special: false,
-        length: 48
-    });
+    const [config, setConfig] = useState<PasswordForm>(initialConfig);
+    const changesSaved = useRef(false);
+    const autoCopy = useRef(true);
+
+    const notfiy = useNotifier();
 
     useEffect(() => {
-        Rust.fromMnemonicPhrase(phrase, config).then(data => {
+        const listener = () => {
+            changesSaved.current = true;
+        }
+        document.addEventListener('copy', listener);
+        return () => {
+            document.removeEventListener('copy', listener);
+        }
+    }, [])
+
+    const copyPassword = (password: string | null) => {
+        if (password === null) return;
+        const close = notfiy({
+            type: "info",
+            content: "Password Copied to Clipboard!"
+        });
+        setTimeout(() => {
+            close();
+        }, 3000)
+        navigator.clipboard.writeText(password);
+        changesSaved.current = true;
+    }
+
+    useEffect(() => {
+        Rust.fromMnemonicPhrase<PasswordForm, PhraseData>(phrase, config).then(data => {
             setPassword(data.password);
+            if (autoCopy.current) {
+                autoCopy.current = false;
+                copyPassword(data.password);
+            }
         }).catch(console.error);
     }, [config]);
 
@@ -518,15 +582,20 @@ const PasswordDisplay: FunctionComponent<{
             <div class={`${styles['styled-box']} ${styles.simple} ${styles.flex}`}>
                 { phrase.map(w => <SimpleWord>{w}</SimpleWord>) }
             </div>
-            <ExpansionGroup>
-                <ExpansionContainer
-                    heading="Password Generation Settings"
-                    icon={<Icon name="option-sliders" height={28}/>}
-                    description="Change the length and the type of characters that are included in your password">
-                    <PasswordSettings data={config} onChange={setConfig}/>
-                </ExpansionContainer>
-            </ExpansionGroup>
-            <h6>Password Output</h6>
+            <PasswordSettings 
+                data={config} 
+                onChange={e => {
+                    changesSaved.current = false;
+                    setConfig(e);
+                }}/>
+            <h6 class={styles['output-heading']}>
+                Password Output
+                <button 
+                    onClick={() => copyPassword(password)}
+                    class={styles['copy-button']}>
+                        <Icon name="copy"/>
+                </button>
+            </h6>
             <div class={`${styles['styled-box']} ${styles.simple} ${styles['hover-action']}`}>
                 <PasswordOuput entropy={0} password={password ?? ""}/>
             </div>
@@ -537,6 +606,7 @@ const PasswordDisplay: FunctionComponent<{
 export const RestorePage: FunctionComponent = () => {
     const [page, setPage] = useState<"form" | "password">("form");
     const phraseRef = useRef<string[] | null>([]);
+    const configRef = useRef<PasswordForm | null>(null!);
 
     useEffect(() => {
         Rust.getWordlist().then(data => {
@@ -547,13 +617,17 @@ export const RestorePage: FunctionComponent = () => {
         }).catch(console.error); // todo: implement global error handler
     })
 
-    console.log(phraseRef.current);
     return (
         <div class={classNames([ styles['grid-container'], styles[page] ])}>
             { (page === "form" ? (
-                <InputForm onNext={phrase => {phraseRef.current = phrase; setPage("password"); }}/>
+                <InputForm 
+                    onNext={(phrase, config) => {
+                        phraseRef.current = phrase;
+                        configRef.current = config;
+                        setPage("password"); 
+                    }}/>
             ) : (
-                <PasswordDisplay phrase={phraseRef.current!}/>
+                <PasswordDisplay config={configRef.current!} phrase={phraseRef.current!}/>
             )) }
         </div>
     );

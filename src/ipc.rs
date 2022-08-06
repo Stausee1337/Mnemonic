@@ -9,7 +9,7 @@ use tauri_runtime::{
 };
 use tauri_runtime_wry::{Wry, EventProxy};
 
-use crate::{events::EventLoopMessage, mnemonic, commands};
+use crate::{events::EventLoopMessage, mnemonic, commands, config};
 
 // use crate::settings::{};
 
@@ -325,6 +325,15 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         }
         "showMessageBox" => {
             commands::show_message_box(window, invoke);
+        }
+        "configIsFile" => {
+            config::js_promise_is_file(invoke);
+        }
+        "configSetProperty" => {
+            config::js_config_set_property(invoke);
+        }
+        "configGetProperty" => {
+            config::js_config_get_property(invoke);
         }
         _ => {
             invoke.resolver.reject(format!("command {} not found", cmd));

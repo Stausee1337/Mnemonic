@@ -1,16 +1,15 @@
-import { ComponentProps, FunctionComponent, RenderableProps, VNode } from "preact";
-import { ToggleSwitch, Slider, TooltipButton, ExpansionContainer, ExpansionGroup, ContainerItem, ContainerBox, Button } from "../controls"
+import { FunctionComponent, RenderableProps, VNode } from "preact";
+import { ToggleSwitch, Slider, ExpansionContainer, ExpansionGroup, ContainerItem, ContainerBox } from "../controls"
 import styles from "./generate.module.scss"
-import { random, classNames, nullOrUndefined, useSafeState } from "../utils"
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { classNames, nullOrUndefined, useSafeState } from "../utils"
+import { useEffect, useMemo, useState } from "preact/hooks";
 import { Rust } from "../interface"
 import { useNotifier } from "../notification";
-import { Icon } from "../icons";
 import { NavigationFinished, RouteEvent, useRouter } from "../router";
 import { filter } from "rxjs";
 import { DialogResult, showMessageBox } from "../api";
-import { PhraseData } from "../types";
 import { Action, Transition } from "history";
+import { Config } from "../config";
 
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
@@ -36,6 +35,12 @@ export interface PasswordForm {
     special: boolean,
     length: number
 }
+
+export interface PhraseData {
+    phrase: string[];
+    password: string
+}
+
 
 export const PasswordSettings: FunctionComponent<{
     data?: PasswordForm,
@@ -207,13 +212,19 @@ export {
     POD as PasswordOuput
 };
 
-export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
-    config: initialConfig 
-}) => {
+export const passwordGenerationRulesDefault = {
+    characters: true,
+    digits: true,
+    punctuation: true,
+    special: false,
+    length: 48
+}
+
+export const GeneratePage: FunctionComponent = () => {
     const [initialized, setInitialzed] = useSafeState(0);
     const [wordlist, setWordlist] = useState<string[]>(null!);
     const [password, setPassword] = useState<string>(null!);
-    const [config, setConfig] = useState(initialConfig);
+    const [config, setConfig] = useState<PasswordForm>(passwordGenerationRulesDefault);
     const [animating, setAnimating] = useState(false);
 
     const router = useRouter()!;
@@ -245,33 +256,36 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
 
     useEffect(() => {
         if (initialized !== 1) return;
-        if (!nullOrUndefined(router.location.state?.phraseData)) {
-            const data = router.location.state?.phraseData as PhraseData;
-            setWordlist(data.phrase);
-            setPassword(data.password);
-            return;
-        }
-        Rust.generateMnemonicPhrase(initialConfig).then(data => {
-            router.history.replace(router.location, { phraseData: data })
-            setWordlist(data.phrase);
-            setPassword(data.password);
-            setInitialzed(2);
-        }).catch(e => notfiy({
-            class: 'error',
-            closeButton: true,
-            title: 'IPC command error',
-            content: `Error sending IPC request:
-            ${e}
-            `
-        }));
+        Config.globalConfig.passwordGenerationRules.getOrDefault(passwordGenerationRulesDefault)
+            .then(rules => {
+                setConfig(rules);
+                setInitialzed(2);
+            })
     }, [initialized]);
 
     useEffect(() => {
         if (initialized !== 2) return;
-        Rust.fromMnemonicPhrase(wordlist, config).then(data => {
+        if (!nullOrUndefined((router.location.state as any)?.phraseData)) {
+            const data = (router.location.state as any)?.phraseData as PhraseData;
+            setWordlist(data.phrase);
+            setPassword(data.password);
+            return;
+        }
+        Rust.generateMnemonicPhrase<PasswordForm, PhraseData>(config).then(data => {
+            router.history.replace(router.location, { phraseData: data })
+            setWordlist(data.phrase);
+            setPassword(data.password);
+            setInitialzed(3);
+        }).catch(console.error); // todo: call global error handler
+    }, [initialized])
+
+    useEffect(() => {
+        if (initialized !== 3) return;
+        Config.globalConfig.passwordGenerationRules = config as any;
+        Rust.fromMnemonicPhrase<PasswordForm, PhraseData>(wordlist, config).then(data => {
             setPassword(data.password);
         }).catch(console.error);
-    }, [config, initialized]);
+    }, [config]);
 
     useEffect(() => {
         if (animating) {
@@ -287,12 +301,19 @@ export const GeneratePage: FunctionComponent<{ config: PasswordForm }> = ({
         if (!animating) setAnimating(true);
     }
 
-    const updatePhrase = () => Rust.generateMnemonicPhrase(config).then(config => {
+    const updatePhrase = () => Rust.generateMnemonicPhrase<PasswordForm, PhraseData>(config).then(config => {
         setWordlist(config.phrase);
         setPassword(config.password);
     })
     
     const copyPassword = () => {
+        const close = notfiy({
+            type: "info",
+            content: "Password Copied to Clipboard!"
+        });
+        setTimeout(() => {
+            close();
+        }, 3000)
         navigator.clipboard.writeText(password);
     }
 

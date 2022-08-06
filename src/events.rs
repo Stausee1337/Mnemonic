@@ -6,8 +6,8 @@ pub enum EventLoopMessage {
     ShowSysMenu { x: i32, y: i32 },
     EstablishChannel(ChannelHandshakeRequest),
     CloseChannel(uuid::Uuid),
-    WindowSysCommand(WindowButton),
 
+    WindowSysCommand(WindowButton),
     WindowFocus,
     WindowBlur,
     WindowMinimize

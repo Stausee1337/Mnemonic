@@ -13,5 +13,6 @@
     "update": 60011,
     "info": 60012,
     "error": 60013,
-    "warning": 60014
+    "warning": 60014,
+    "save": 60015
 }
