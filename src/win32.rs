@@ -1,20 +1,25 @@
-use tauri_runtime::EventLoopProxy;
+use tauri_runtime::{EventLoopProxy};
 use tauri_runtime_wry::EventProxy;
 use windows::{
     core::{PCWSTR, Error},
     Win32::{
-        Foundation::{HWND, LPARAM, WPARAM, LRESULT},
-        System::LibraryLoader::*,
+        Foundation::{HWND, LPARAM, WPARAM, LRESULT, HANDLE, ERROR_FILE_NOT_FOUND},
+        System::{LibraryLoader::*, Threading::{OpenMutexW, CreateMutexW, ReleaseMutex}, Pipes::{CreateNamedPipeW, PIPE_TYPE_BYTE, PIPE_WAIT, PIPE_READMODE_BYTE, ConnectNamedPipe}, SystemServices::{WRITE_DAC, GENERIC_READ, GENERIC_WRITE} },
         UI::{
             WindowsAndMessaging::*,
             Controls::MARGINS,
             Shell::{SetWindowSubclass, DefSubclassProc}
         }, 
-        Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea},
+        Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea}, Storage::FileSystem::{PIPE_ACCESS_DUPLEX, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_FLAGS_AND_ATTRIBUTES, CreateFileA, OPEN_EXISTING, FILE_ACCESS_FLAGS, FILE_SHARE_MODE}, Security::SECURITY_ATTRIBUTES,
     },
 };
 
 use crate::events::EventLoopMessage;
+
+use std::{
+    fs::File,
+    os::windows::prelude::FromRawHandle
+};
 
 fn icon_from_resource(resource_id: u16) -> Result<HICON, Error> {
     // let (width, height) = size.map(Into::into).unwrap_or((0, 0));
@@ -134,4 +139,92 @@ pub fn install_event_hook(hwnd: HWND, event_proxy: EventProxy<EventLoopMessage>)
         )
     };
     return subclass_result.as_bool();
+}
+
+pub struct Mutex(HANDLE);
+
+impl Drop for Mutex {
+    fn drop(&mut self) {
+        unsafe {
+            ReleaseMutex(self.0);
+        }
+    }
+}
+
+pub fn try_open_allocation_mutex() -> Option<Mutex> {
+    let result = unsafe {
+        OpenMutexW(0x1F0001u32, false, "{A91B718C-2F12-4B5A-AE8A-FC04C3982E09}")
+    };
+    match result {
+        Ok(_) => return None,
+        Err(err) => {
+            if err.win32_error() == Some(ERROR_FILE_NOT_FOUND) {
+                let hmutex = unsafe {
+                    CreateMutexW(std::ptr::null(), false, "{A91B718C-2F12-4B5A-AE8A-FC04C3982E09}")
+                }.unwrap();
+                return Some(Mutex(hmutex));
+            } else {
+                panic!("{}", err);
+            }
+        }
+    }
+}
+
+
+pub fn create_pipe_server<F>(
+    path: String,
+    callback: F
+)
+where 
+    F: Fn(File)
+ {
+    unsafe fn build_named_pipe(path: String) -> HANDLE {
+        CreateNamedPipeW(
+            path, 
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED | FILE_FLAGS_AND_ATTRIBUTES(WRITE_DAC), 
+            PIPE_TYPE_BYTE | PIPE_WAIT | PIPE_READMODE_BYTE, 
+            1, 
+            65536, 
+            65536, 
+            0, 
+            std::ptr::null_mut())
+    }
+
+    let mut handle = unsafe { build_named_pipe(path.clone()) };
+
+    loop {
+        let _res = unsafe { ConnectNamedPipe(handle, std::ptr::null_mut()) };
+    
+        callback(unsafe { File::from_raw_handle(handle.0 as *mut std::ffi::c_void) });
+        handle = unsafe { build_named_pipe(path.clone()) };
+    }
+}
+
+pub fn connect_to_pipe(path: String) -> File {
+    let mut attr = SECURITY_ATTRIBUTES {
+        nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+        lpSecurityDescriptor: std::ptr::null_mut(),
+        bInheritHandle: true.into()
+    };
+
+    let result = unsafe {
+        CreateFileA(
+            path, 
+            FILE_ACCESS_FLAGS(GENERIC_READ) | FILE_ACCESS_FLAGS(GENERIC_WRITE) | FILE_ACCESS_FLAGS(WRITE_DAC), 
+            FILE_SHARE_MODE(0), 
+            &mut attr, 
+            OPEN_EXISTING, 
+            FILE_FLAG_OVERLAPPED, 
+            HANDLE(0)
+        )
+    };
+
+    let handle = result.unwrap();
+    unsafe { File::from_raw_handle(handle.0 as *mut std::ffi::c_void) }
+}
+
+pub fn send_close_message(hwnd: HWND) {
+    unsafe {
+        SendMessageA(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0))
+    };
 }

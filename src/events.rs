@@ -10,5 +10,8 @@ pub enum EventLoopMessage {
     WindowSysCommand(WindowButton),
     WindowFocus,
     WindowBlur,
-    WindowMinimize
+    WindowMinimize,
+
+    ApplicationQuit,
+    ApplicationOpenWindow
 }

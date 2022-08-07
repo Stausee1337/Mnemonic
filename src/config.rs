@@ -1,4 +1,5 @@
 use bson::{Bson, Document};
+use serde::Deserialize;
 use std::{fs::{File, self}};
 use serde_json::Value;
 
@@ -171,4 +172,19 @@ fn promise_is_file() -> bool {
 
 pub fn js_promise_is_file(invoke: Invoke) {
     invoke.resolver.resolve(promise_is_file())
+}
+
+pub fn get_config_or_default<D: for<'de> Deserialize<'de>>(
+    dotted_path: &str,
+    default: Option<D>
+) -> Option<D> {
+    let cfg_doc = read_get_document_safe();
+    let result = get_prop_from_path(&dotted_path.split(".").map(|x| x.to_string()).collect(), cfg_doc);
+    match result {
+        Some(bson) => {
+            let result = bson::from_bson::<D>(bson);
+            return result.ok().or(default);
+        }
+        None => return default
+    }
 }
