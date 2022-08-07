@@ -1,10 +1,17 @@
+use serde::{Serialize, Deserialize};
 use tauri_runtime::{EventLoopProxy};
 use tauri_runtime_wry::EventProxy;
 use windows::{
     core::{PCWSTR, Error},
     Win32::{
-        Foundation::{HWND, LPARAM, WPARAM, LRESULT, HANDLE, ERROR_FILE_NOT_FOUND},
-        System::{LibraryLoader::*, Threading::{OpenMutexW, CreateMutexW, ReleaseMutex}, Pipes::{CreateNamedPipeW, PIPE_TYPE_BYTE, PIPE_WAIT, PIPE_READMODE_BYTE, ConnectNamedPipe}, SystemServices::{WRITE_DAC, GENERIC_READ, GENERIC_WRITE} },
+        Foundation::{HWND, LPARAM, WPARAM, LRESULT, HANDLE, ERROR_FILE_NOT_FOUND, ERROR_SUCCESS},
+        System::{
+            Registry::{HKEY, HKEY_CURRENT_USER, RegCloseKey, RegOpenKeyExW, KEY_WRITE, RegSetValueExA, REG_SZ, RegGetValueA, RRF_RT_REG_SZ, KEY_READ, RegDeleteValueA},
+            LibraryLoader::*, 
+            Threading::{OpenMutexW, CreateMutexW, ReleaseMutex}, 
+            Pipes::{CreateNamedPipeW, PIPE_TYPE_BYTE, PIPE_WAIT, PIPE_READMODE_BYTE, ConnectNamedPipe}, 
+            SystemServices::{WRITE_DAC, GENERIC_READ, GENERIC_WRITE} 
+        },
         UI::{
             WindowsAndMessaging::*,
             Controls::MARGINS,
@@ -227,4 +234,101 @@ pub fn send_close_message(hwnd: HWND) {
     unsafe {
         SendMessageA(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0))
     };
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum AutostartCommand {
+    Get, Activate, Deactivate
+}
+
+struct Finally(HKEY);
+
+impl Drop for Finally {
+    fn drop(&mut self) {
+        unsafe { RegCloseKey(self.0) };
+    }
+}
+
+static UNSAFE_CHAR: [char; 17] = ['!', '"', '#', '$', '&', '\'', '(', ')', '*', ']', '^', '`', '{', '|', '}', '~', ' '];
+
+fn try_get_executable_path() -> Option<String> {
+    std::env::current_exe().ok()?.into_os_string().into_string().ok()
+}
+
+fn check_unsafe(arg: &String) -> bool {
+    return arg.chars().any(|c| UNSAFE_CHAR.contains(&c));
+}
+
+fn argquote(args: Vec<String>) -> String {
+    fn quote(s: String) -> String {
+        if !check_unsafe(&s) {
+            return s;
+        }
+        return format!("\"{}\"", s.replace(r#"""#, r#"\""#));
+    }
+
+    return args.iter().map(|s| quote(s.to_string())).collect::<Vec<String>>().join(" ");
+}
+
+pub fn autostart_registry_execute_command(command: AutostartCommand) -> Option<bool> {
+    let mut hkey = HKEY(0);
+    let res = unsafe {
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            r#"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"#,
+            0,
+            KEY_WRITE | KEY_READ,
+            &mut hkey
+        )
+    };
+    let _finally = Finally(hkey);
+
+    if res == ERROR_SUCCESS {
+        unsafe {
+            match command {
+                AutostartCommand::Activate => {
+                    let exec_str = argquote(
+                        vec![
+                            try_get_executable_path()?,
+                            "--launcher".to_string()]
+                    );
+                    
+                    let (len, exec_str) = (exec_str.len(), std::ffi::CString::new(exec_str).ok()?);
+                    let res = RegSetValueExA(
+                        hkey, 
+                        "Stausee.Mnemonic", 
+                        0, 
+                        REG_SZ, 
+                        exec_str.as_ptr() as *const u8,
+                        len as u32
+                    );
+                    return Some(res == ERROR_SUCCESS);
+                }
+                AutostartCommand::Deactivate => {
+                    let res = RegDeleteValueA(
+                        hkey, 
+                        "Stausee.Mnemonic"
+                    );
+                    return Some(res == ERROR_SUCCESS);
+                }
+                AutostartCommand::Get => {
+                    let res = RegGetValueA(
+                        hkey, 
+                        "", 
+                        "Stausee.Mnemonic",
+                        RRF_RT_REG_SZ, 
+                        std::ptr::null_mut(), 
+                        std::ptr::null_mut(), 
+                        std::ptr::null_mut()
+                    );
+                    return match res {
+                        ERROR_SUCCESS => Some(true),
+                        ERROR_FILE_NOT_FOUND => Some(false),
+                        _ => None
+                    };
+                }
+            }
+        }
+    }
+    None
 }

@@ -14,6 +14,7 @@ use winsafe::{
 
 use crate::ipc::{Invoke, deserialize_arguments, get_argument};
 use crate::events::EventLoopMessage;
+use crate::win32;
 
 #[derive(Debug, Clone)]
 pub enum WindowButton {
@@ -297,3 +298,17 @@ pub fn show_message_box(
     });
 }
 
+
+pub fn autostart_registry_execute_command(invoke: Invoke) -> Option<()> {
+    let arguments = deserialize_arguments(invoke.clone())?;
+    let mut iter = arguments.iter();
+    let resolver = invoke.resolver.clone();
+
+    let result = win32::autostart_registry_execute_command(
+        get_argument(iter.next()?, resolver.clone())?
+    );
+
+    resolver.resolve(result);
+    
+    Some(())
+} 

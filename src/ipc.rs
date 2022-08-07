@@ -326,6 +326,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "showMessageBox" => {
             commands::show_message_box(window, invoke);
         }
+        "autostartRegistryExecuteCommand" => {
+            commands::autostart_registry_execute_command(invoke);
+        }
         "configIsFile" => {
             config::js_promise_is_file(invoke);
         }

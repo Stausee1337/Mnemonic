@@ -36,6 +36,7 @@ features = [
     "Win32_Storage_FileSystem",
     "Win32_System_SystemServices",
     "Win32_System_IO",
+    "Win32_System_Registry",
     "alloc"
 ]
 
@@ -46,4 +47,4 @@ embed-manifest="1.3.0"
 [package.metadata.winres]
 OriginalFilename = "Mnemonic.exe"
 FileDescription = "Mnemonic - Password Memorizer"
-
+CompanyName = "Stausee"
