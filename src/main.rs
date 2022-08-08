@@ -6,9 +6,13 @@ mod commands;
 mod mnemonic;
 mod win32;
 
-use std::str::FromStr;
+use std::{collections::HashMap, ffi::OsStr};
+use std::path::PathBuf;
 use std::io::prelude::*;
+use std::str::FromStr;
+use std::fs::File;
 
+use tar::Archive;
 // use win32::DispatchExt;
 use wry::application::{
     event::Event,
@@ -20,7 +24,10 @@ use tauri_runtime_wry::{Wry, Plugin, EventLoopIterationContext, WebContextStore,
 use tauri_runtime::{
     Runtime, RunEvent, UserAttentionType,
     window::{PendingWindow, DetachedWindow, WindowEvent},
-    webview::{WebviewAttributes}, Dispatch, RuntimeHandle, SystemTray, TrayIcon, SystemTrayEvent, EventLoopProxy, menu::{SystemTrayMenu, CustomMenuItem}
+    webview::{WebviewAttributes}, 
+    Dispatch, RuntimeHandle, SystemTray, TrayIcon, SystemTrayEvent, EventLoopProxy,
+    menu::{SystemTrayMenu, CustomMenuItem}, 
+    http::{ResponseBuilder, Response, Request}
 };
 use tauri_utils::{config::{WindowUrl, WindowConfig,}, Theme};
 
@@ -100,6 +107,46 @@ fn create_window_config() -> WindowConfig {
     }
 }
 
+fn create_custom_protocol_handler(
+) -> Box<dyn Fn(&Request) -> Result<Response, Box<dyn std::error::Error>> + Send + Sync + 'static> {
+    let mut current_exe = std::env::current_exe().unwrap();
+    current_exe.pop();
+    let tarfile = File::open(current_exe.join("bundle.tar")).unwrap();
+    let tar: HashMap<PathBuf, Vec<u8>> = Archive::new(tarfile)
+        .entries()
+        .unwrap()
+        .map(|e| {
+            let mut e = e.unwrap();
+            let path = e.path().unwrap().as_ref().to_owned();
+            let mut buffer: Vec<u8> = Vec::default();
+            e.read_to_end(&mut buffer).unwrap();
+            (path, buffer)
+        }).collect();
+    Box::new(move |request| {
+        let path = request.uri().replace("mne://", "");
+        let path = std::path::Path::new(&path);
+
+        if path.starts_with("apps") {
+            let path = path.strip_prefix("apps").unwrap();
+
+            
+            if let Some(data) = tar.get(path) {
+                let mimetype = match &path.extension().and_then(OsStr::to_str).unwrap().to_lowercase() as &str {
+                    "html" => "text/html",
+                    "svg" => "image/svg+xml",
+                    "ttf" => "font/ttf",
+                    "js" => "text/javascript",
+                    "css" => "text/css",
+                    _ => panic!("Hi Mom!")
+                };
+                return Ok(ResponseBuilder::new().status(200).mimetype(mimetype).body(data.to_vec()).unwrap());
+            }
+        }
+
+        Ok(ResponseBuilder::new().status(404).body(vec![]).unwrap())
+    })
+}
+
 fn create_window_form_runtime(
     runtime: &Wry<EventLoopMessage>
 ) -> (DetachedWindow<EventLoopMessage, Wry<EventLoopMessage>>, HWND) {
@@ -110,7 +157,13 @@ fn create_window_form_runtime(
         WebviewAttributes::new(url), 
         "1"
     ).unwrap();
-    pending.url = "http://localhost:3000".to_string();
+    if cfg!(debug_assertions)
+    {
+        pending.url = "http://localhost:3000".to_string();
+    } else {
+        pending.register_uri_scheme_protocol("mne", create_custom_protocol_handler());
+        pending.url = "mne://apps/index.html".to_string();
+    }
     pending.ipc_handler = Some(ipc::create_ipc_handler(runtime.handle()));
     pending.webview_attributes.initialization_scripts.push(include_str!("../resources/init.js").to_string());
     let detached = runtime.create_window(pending).unwrap();
