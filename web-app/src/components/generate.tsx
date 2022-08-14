@@ -14,7 +14,6 @@ import { Config } from "../config";
 const Spacer: FunctionComponent = () => <span class={styles.spacer}></span>
 
 export const Word: FunctionComponent<{ idx?: number }> = ({ idx, children }) => {
-    // const [delay, _] = useState(random(0, 300));
     const animating = idx !== undefined;
 
     const props = {
@@ -65,7 +64,6 @@ export const PasswordSettings: FunctionComponent<{
         lod = arrayState;
     }
 
-    // disabled={lod[0]} checked={characters} onChanged={setCharacters}
     return (
         <>
             <ContainerItem label="Characters" children={<ToggleSwitch disabled={lod[0]} checked={characters} onChanged={setCharacters}/>}/>

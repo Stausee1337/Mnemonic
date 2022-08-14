@@ -82,7 +82,6 @@ label.toggle {
 label.checkbox {
     display: inline-block;
     padding: 0 0 0 2.8rem;
-    // margin: 0 0 1rem 0;
     position: relative;
     height: 2.2rem;
     line-height: 2.2rem;
@@ -265,12 +264,10 @@ div.title-bar {
     
     &.window-active { 
         color: black;
-        // background-color: #d7dade; 
     }
 
     &.window-inactive {
         color: #6d6d6d;
-        // background-color: #eaecee;
     }
 
     span.menu {

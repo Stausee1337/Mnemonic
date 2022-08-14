@@ -248,7 +248,6 @@ const IntelligentWordInput: FunctionComponent<{
                     input!.value = word;
                     inputChange();
                     input!.select();
-                    // input!.setSelectionRange(0, 0);
                 }
                 break;
             case "Space":
@@ -581,7 +580,7 @@ const PasswordDisplay: FunctionComponent<{
                 autoCopy.current = false;
                 copyPassword(data.password);
             }
-        }).catch(console.error);
+        }).catch(console.error);  // todo: call global error handler
     }, [config]);
 
     return (

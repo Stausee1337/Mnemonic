@@ -29,7 +29,6 @@ use std::{
 };
 
 fn icon_from_resource(resource_id: u16) -> Result<HICON, Error> {
-    // let (width, height) = size.map(Into::into).unwrap_or((0, 0));
     unsafe {
         LoadImageW(
             GetModuleHandleW(PCWSTR::default()).unwrap_or_default(),
@@ -57,7 +56,6 @@ fn set_for_window(hwnd: HWND, hicon: HICON) {
 pub fn set_icon_from_resource(hwnd: HWND, resource_id: u16) -> Result<(), Error> {
     let hicon = icon_from_resource(resource_id)?;
     Ok(set_for_window(hwnd, hicon))
-    //Ok(())
 }
 
 pub fn window_enable_visual_styles(hwnd: HWND) -> Result<(), Error> {
@@ -112,10 +110,10 @@ unsafe extern "system" fn pfn_subclass(
     match msg {
         WM_ACTIVATE => {
             match wparam.0 {
-                1usize => { //
+                1usize => {
                     let _ = (*event_loop).send_event(EventLoopMessage::WindowFocus);
                 }
-                2usize => { // WA_CLICKACTIVE
+                2usize => {
                     let _ = (*event_loop).send_event(EventLoopMessage::WindowFocus);
                 }
                 0usize => {

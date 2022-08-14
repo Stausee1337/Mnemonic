@@ -1,6 +1,5 @@
 @import url(assets/iconfont.css);
 
-// $font: 'Open Sans', sans-serif;
 $font: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;;
 
 html,
@@ -9,9 +8,7 @@ body {
   width: 100%;
   padding: 0;
   margin: 0;
-  background-color: #fcfcfc;
   background-color: #fafafa;
-  // font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
   font-family: $font;
   color: black;
   user-select: none;
@@ -46,7 +43,6 @@ div, span, button {
 }
 
 button, input, textarea {
-  // font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
   font-family: $font;
   font-size: 1.4rem;
 }

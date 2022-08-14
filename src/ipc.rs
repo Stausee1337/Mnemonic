@@ -11,8 +11,6 @@ use tauri_runtime_wry::{Wry, EventProxy};
 
 use crate::{events::EventLoopMessage, mnemonic, commands, config};
 
-// use crate::settings::{};
-
 const MIN_JSON_PARSE_LEN: usize = 10_240;
 const MAX_JSON_STR_LEN: usize = usize::pow(2, 30) - 2;
 

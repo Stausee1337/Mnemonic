@@ -48,7 +48,6 @@ export function useEventProvider(): EventProvider {
     }, []);
 
     useEffect(() => {
-        console.info("create(MutationObserver)");
         const observer = new MutationObserver(mutations => {
             const listener = listenersMap.get("titleChanged");
             const title = mutations[0].target.textContent;
@@ -60,7 +59,6 @@ export function useEventProvider(): EventProvider {
         observer.observe(titleElement!, { subtree: true, characterData: true, childList: true  });
 
         return () => {
-            console.warn("disconnection mutation observer");
             observer.disconnect();
         }
     }, []);
@@ -109,7 +107,6 @@ const blur = new Event("deactivate");
 export function installWindowEventHook() {
     let minimized = false;
     let eatNextEvent = false;
-    console.info("establishChannel(window-events)");
     establishChannel<WindowEvent>("window-events").subscribe({
         next(event) {
             switch (event) {

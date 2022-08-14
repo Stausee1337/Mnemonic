@@ -9,7 +9,6 @@ from operator import itemgetter
 
 export = lambda x: x  # public api
 wordlist: List[str] = None
-# table_enc7 = r"""abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!§$%/()´`^°*~#|,:._-€@\?"[{\'&>;+}=]<"""
 
 FRAGMENTS = [
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",     #  characters
@@ -47,7 +46,6 @@ def _init_wordlist():
 def generate_mnemonic(num):
     mnemonic = []
     for _ in range(12):
-        # chunk = num & 0b1111111111111111111111
         chunk = num & 0b11111111111
         mnemonic.append(wordlist[chunk])
         num >>= 11
@@ -87,66 +85,6 @@ def hash_extend(seed, config):
         functools.reduce(lambda c, p: c | p, (i<<abs(s-3) for s, i in enumerate(map(int, config))))
     )
     return hashlib.sha512(seed).digest()
-
-
-@inject_config
-def encode7(binstr, chars, length):
-    gen_bitmask = lambda n: (1<<n)-1
-    def rtv(leftchar, leftbits):
-        tmp = leftchar >> leftbits
-        if (tmp & 0b01111111) < len(chars):
-            return leftbits, 0b01111111
-        return leftbits+1, 0b00111111
-    
-    def pad_random(start_seed):
-        rand = random.Random(start_seed)
-        while not check_len():
-            yield rand.getrandbits(8)
-        
-
-    res = []
-    leftchar = 0
-    leftbits = 0
-    def code(iterable):  # encode
-        nonlocal leftchar, leftbits
-        for c in iterable:
-            # Shift into our buffer, and output any 6bits ready
-            leftchar = ((leftchar << 8) | c) & 0xffff
-            leftbits += 1
-            leftbits, BITMASK = rtv(leftchar, leftbits)
-            res.append(chars[(leftchar >> leftbits) & BITMASK])
-            if leftbits >= 6:
-                leftbits -= 6
-                _, BITMASK = rtv(leftchar, leftbits)
-                res.append(chars[(leftchar >> leftbits) & BITMASK])
-    
-    def end():  # flush left bits
-        nonlocal leftchar, leftbits
-        if leftbits == 0:
-            return
-        # PAD to 7-bit
-        orig = leftchar
-        leftchar = (leftchar & gen_bitmask(leftbits)) << (7-leftbits) 
-        if leftchar >= len(chars):  # as always: 7-bit might be to large
-            # PAD to 6-bit
-            leftchar = orig
-            leftchar = (leftchar & gen_bitmask(leftbits)) << (6-leftbits) 
-        res.append(chars[leftchar])
-    
-    def check_len():  # check if buffer is long enough
-        more = 1 if leftbits != 0 else 0
-        return len(res) >= length + more
-    
-    code(binstr)
-    if check_len():
-        # if buffer is already long enough, flush bits and end
-        end()
-    else:
-        # add pseudo-random seeded pattern
-        code(pad_random(res[-1]))
-        end()
-    
-    return ''.join(res[:length])
 
 
 @inject_config

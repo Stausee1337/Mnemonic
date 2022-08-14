@@ -85,8 +85,6 @@ pub fn generate_mnemonic_phrase(invoke: Invoke) -> Option<()> {
     let mut iter = arguments.iter();
     let resolver = invoke.resolver.clone();
 
-    // let c = ConfigData::deserialize(iter.next()?);
-
     let result = generate_mnemonic_phrase_impl(
         get_argument(iter.next()?, resolver.clone())?
     );

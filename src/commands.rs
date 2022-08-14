@@ -165,7 +165,6 @@ fn show_message_box_impl(
     let mut tdc = TASKDIALOGCONFIG::default();
     tdc.hwndParent = hwnd;
     tdc.hInstance = HINSTANCE::GetModuleHandle(None).unwrap();
-    // tdc.dwCommonButtons = co::TDCBF::CLOSE;
     tdc.dwFlags = co::TDF::ALLOW_DIALOG_CANCELLATION | co::TDF::SIZE_TO_CONTENT;
 
     if !options.no_link {

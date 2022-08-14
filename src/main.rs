@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 mod ipc;
 mod config;
@@ -16,7 +16,6 @@ use std::fs::File;
 
 use events::ApplicationOpenLocation;
 use tar::Archive;
-// use win32::DispatchExt;
 use wry::application::{
     event::Event,
     event_loop::{
@@ -412,7 +411,7 @@ fn main() {
     let mut runtime = Wry::<EventLoopMessage>::new()
         .expect("Couldn't build wry runtime");
 
-    if mutex.is_none() { // App already open
+    if mutex.is_none() { // App already open in other process
         notify_window_process(get_applicaton_open_location(&args));
         return;
     }
