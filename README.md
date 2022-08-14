@@ -24,7 +24,12 @@ Mnemonic´s frontend is written in Typescript (TSX) and SCSS using [Preact](http
 - CPython >=3.10.0 [python.org](https://www.python.org/)
 - Windows 7 or higher (only tested on Windows 10+11)
 
+### Recomended Instrucions
+1. Download the prebuild Application bundled in the `mnemonic-1.0.0-version.zip` and unpack it on your local machine in a static directory like `%localappdata%\Programs\Mnemonic`.
 
+2. Create a shortcut form the executable to your Start Menu folder at `%appdata%\Microsoft\Windows\Start Menu\Programs\` and call it `Mnemonic - Password Memorizer`
+
+3. Open the Applicaton the first time and Generate your Mnemonic Phrase. Add it to autolaunch in the prefrences.
 
 ## Building from Source on Windows
 
