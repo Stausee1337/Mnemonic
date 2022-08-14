@@ -64,7 +64,7 @@ pub fn handle_window_buttons(
 }
 
 fn window_show_sys_menu_impl(proxy: EventProxy<EventLoopMessage>, x: i32, y: i32) -> Result<(), tauri_runtime::Error> {
-    proxy.send_event(EventLoopMessage::ShowSysMenu { x, y })
+    proxy.send_event(EventLoopMessage::WindowShowSysMenu { x, y })
 }
 
 pub fn window_show_sys_menu(

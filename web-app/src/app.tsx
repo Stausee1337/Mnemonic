@@ -1,25 +1,33 @@
 import { FunctionComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { rustInterface } from './api';
 import { GeneratePage } from './components/generate'
 import { RestorePage } from './components/restore';
+import { SettingsPage } from './components/settings';
 import { WelcomePage, containerClass } from './components/welcome';
 import { Config } from './config';
 import { Breadcrumb, CustomScrollbar, TitleBar } from './controls';
+import { Rust } from './interface';
 import { NotificationProvider } from './notification';
 import { RouterOutlet, useRouter } from './router';
+import { getLocationContext, LocationContextType } from './window';
 
 export const App: FunctionComponent = () => {
     const [contentContainer, setContaienr] = useState<HTMLDivElement | null>(null!);
+    const locationContext = getLocationContext();
     const router = useRouter();
 
-    useEffect(() => {
-        Config.globalConfig.generalApp.skipToRetrieve.getOrDefault(false)
-            .then(skp2r => {
-                if (skp2r) {
-                    router?.history.push('/retrieve')
-                }
-            })
-    }, [])
+    useEffect((async () => {
+        const skp2r = await Config.globalConfig.generalApp.skipToRetrieve.getOrDefault(false);
+        if (locationContext === "Auto") {
+            if (skp2r) {
+                router?.history.push('/retrieve')
+            }
+        } else {
+            router?.history.push(`/${locationContext.toLowerCase()}`)
+        }
+        Rust.pageContentLoaded()
+    }) as any, [])
     
     return (
         <NotificationProvider>
@@ -51,6 +59,7 @@ export const App: FunctionComponent = () => {
                                     return {
                                         element: <></>,
                                         data: {
+                                            title: "Generate (Printing) - Mnemonic",
                                             heading: "Printing"
                                         }
                                     }
@@ -60,6 +69,14 @@ export const App: FunctionComponent = () => {
                                         data: {
                                             title: "Retrieve - Mnemonic",
                                             heading: "Retrieve"
+                                        }
+                                    }
+                                case '/settings':
+                                    return {
+                                        element: <SettingsPage/>,
+                                        data: {
+                                            title: "Preferences - Mnemonic",
+                                            heading: "Global Settings"
                                         }
                                     }
                                 default:

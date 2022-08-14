@@ -5,12 +5,14 @@ import { initializeApi, establishChannel } from './api'
 import { Rust } from './interface';
 import './config';
 import { RouterProvider } from './router';
+import { Resetable, installWindowEventHook } from './window';
 
 initializeApi();
 render((
-    <RouterProvider>
-        <App />
-    </RouterProvider>
+    <Resetable>
+        <RouterProvider>
+            <App />
+        </RouterProvider>
+    </Resetable>
 ), document.getElementById('app')!);
-
-Rust.setInitialized();
+installWindowEventHook();

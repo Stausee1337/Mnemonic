@@ -1,5 +1,5 @@
 use std::{collections::HashMap, sync::{Mutex, Arc}};
-
+    
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, value::RawValue};
 
@@ -186,18 +186,7 @@ impl Channel {
         Self::send(serde_json::json!({
             "type": "message",
             "channelId": self.id.as_fields(),
-            "data": data,
-            "error": null
-        }), &self.window)
-    }
-
-    #[allow(dead_code)]
-    pub fn send_error<T: Serialize>(&self, error: T) {
-        Self::send(serde_json::json!({
-            "type": "message",
-            "channelId": self.id.as_fields(),
-            "data": null,
-            "error": error
+            "data": data
         }), &self.window)
     }
 
@@ -263,29 +252,24 @@ impl Channels {
 }
 
 fn ipc_close_channel(proxy: EventProxy<EventLoopMessage>, invoke: Invoke) -> Option<()> {
-    fn to_u8(value: &Value) -> u8 {
-        u8::try_from(value.as_u64().unwrap()).unwrap()
+    let arguments = deserialize_arguments(invoke.clone())?;
+    let mut iter = arguments.iter();
+    let resolver = invoke.resolver.clone();
+
+    fn inner(
+        proxy: EventProxy<EventLoopMessage>,
+        (d1, d2, d3, d4): (u32, u16, u16, [u8; 8])
+    ) {
+        let uuid = uuid::Uuid::from_fields(d1, d2, d3, &d4);
+        let _ = proxy.send_event(EventLoopMessage::CloseChannel(uuid));
     }
-    
-    let arguments = deserialize_arguments(invoke.clone())?
-        .get(0)
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .to_owned();
-    
-    let vec2 = arguments[3].as_array().unwrap();
-    let uuid = uuid::Uuid::from_fields(
-        u32::try_from(arguments.get(0).unwrap().to_owned().as_u64().unwrap()).unwrap(),
-        u16::try_from(arguments.get(1).unwrap().to_owned().as_u64().unwrap()).unwrap(),
-        u16::try_from(arguments.get(2).unwrap().to_owned().as_u64().unwrap()).unwrap(),
-        &[to_u8(&vec2[0]), to_u8(&vec2[1]), to_u8(&vec2[2]), to_u8(&vec2[3]),
-        to_u8(&vec2[4]), to_u8(&vec2[5]), to_u8(&vec2[6]), to_u8(&vec2[7])]
+
+    inner(
+        proxy,
+        get_argument(iter.next()?, resolver.clone())?
     );
 
-    let _ = proxy.send_event(EventLoopMessage::CloseChannel(uuid));
-
-    invoke.resolver.resolve(Value::Null);
+    resolver.resolve(Value::Null);
 
     Some(())
 }
@@ -304,6 +288,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         }
         "checkChecksum" => {
             mnemonic::check_checksum(invoke);
+        }
+        "pageContentLoaded" => {
+            let _ = proxy.send_event(EventLoopMessage::PageContentLoaded);
         }
         "getWordlist" => {
             commands::get_wordlist(invoke);
@@ -379,6 +366,9 @@ fn handle_invoke_payload(window: Window, payload: IpcPayload, runtime_handle: &R
                     );
                 }
             }
+        }
+        "application-close-window" => {
+            let _ = event_proxy.send_event(EventLoopMessage::ApplicationCloseWindow);
         }
         _ => {
             let message = InvokeMessage { 
@@ -474,6 +464,10 @@ pub fn create_ipc_handler(
             }
         }
     })
+}
+
+pub fn js_window_close_event(window: &Window) {
+    let _ = window.dispatcher.eval_script("_triggerWindowClose();");
 }
 
 pub fn deserialize_arguments(invoke: Invoke) -> Option<Vec<Value>> {

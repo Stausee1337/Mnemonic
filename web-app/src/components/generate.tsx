@@ -90,6 +90,26 @@ function calculatePasswordEntropy(config: PasswordForm) {
     return config.length * Math.log2(poolSize);
 }
 
+async function promptUserLeaving(): Promise<boolean> {
+    const askOnLeave = await Config.globalConfig.generatePage.askOnLeave.getOrDefault(true);
+    if (!askOnLeave) {
+        return true;
+    }
+    const data = await showMessageBox({
+        message: "Are you sure you want to leave the Generate Page?",
+        title: "Mnemonic",
+        detail: "Have you already stored your Mnemonic Phrase?.\nWithout it you wont be able to recover your password!",
+        type: "warning",
+        buttons: ["Yes, Leave", "No, Stay"],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true,
+        checkboxLabel: "Do not ask me again"
+    });
+    Config.globalConfig.generatePage.askOnLeave = !data.checkboxChecked as any;
+    return data.response !== DialogResult.Cancel;
+}
+
 function transitionBlocker(
     transition: Transition,
     unblock: () => void,
@@ -101,20 +121,8 @@ function transitionBlocker(
         reblock();
         return;
     }
-    showMessageBox({
-        message: "Are you sure you want to leave the Generate Page?",
-        title: "Mnemonic",
-        detail: "You haven't printed your Mnemonic Phrase yet.\nWithout it you wont be able to recover your password!",
-        type: "warning",
-        buttons: ["Yes, Leave", "No, Stay"],
-        defaultId: 1,
-        cancelId: 1,
-        noLink: true,
-        checkboxLabel: "Do not ask me again"
-    }).then(data => {
-        if (data.response !== DialogResult.Cancel) {
-            console.assert(data.response === 0, "Respone should be zero");
-            // todo: store data.checkboxChecked decision in config db
+    promptUserLeaving().then(leave => {
+        if (leave) {
             unblock();
             transition.retry(); 
         }
@@ -248,7 +256,20 @@ export const GeneratePage: FunctionComponent = () => {
         }
         const unblock = reblock();
 
+        const closeListener = (e: Event) => {
+            e.preventDefault();
+            promptUserLeaving().then(leave => {
+                if (leave) {
+                    window.removeEventListener('close', closeListener);
+                    Rust.windowClose();
+                }
+            })
+        }
+
+        window.addEventListener('close', closeListener);
+
         return () => {
+            window.removeEventListener('close', closeListener);
             subscribtion.unsubscribe();
             unblock();
         }
@@ -322,7 +343,7 @@ export const GeneratePage: FunctionComponent = () => {
             <ExpansionGroup>
                 <ExpansionContainer 
                     buttons={[
-                        { icon: 'printer', onClick: () => router.history.push('/generate/print') },
+                        /*{ icon: 'printer', onClick: () => router.history.push('/generate/print') },*/
                         { icon: 'update', onClick: updatePhrase }
                     ]}
                     heading="Mnemonic Phrase" expanded>

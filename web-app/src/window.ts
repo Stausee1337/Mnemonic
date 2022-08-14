@@ -1,8 +1,10 @@
-import { useEffect, useMemo } from "preact/hooks";
-import { filter } from "rxjs";
-import { establishChannel } from "./api";
+import { cloneElement, createContext, createElement, FunctionComponent, VNode } from "preact";
+import { useContext, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { filter } from "rxjs/operators";
+import { establishChannel, rustInterface } from "./api";
+import { Rust } from "./interface";
 import { RouteChanged, RouteEvent, RouterInit, useRouter } from "./router";
-import { nullOrUndefined } from "./utils";
+import { makeId, nullOrUndefined } from "./utils";
 
 type ListenerType<T> = (event: T) => void;
 export interface EventProvider {
@@ -17,47 +19,31 @@ export function useEventProvider(): EventProvider {
     const router = useRouter();
 
     useEffect(() => {
-        let active = true;
-        let minimized = false;
-        let eatNextEvent = false;
-        console.info("establishChannel(window-events)");
-        let subscribtion = establishChannel<WindowEvent>("window-events").subscribe({
-            next(event) {
-                switch (event) {
-                    case "minimized":
-                        if (!minimized) {
-                            active = false;
-                            minimized = true;
-                        } else {
-                            eatNextEvent = true;
-                        }
-                        break;
-                    case "blur":
-                        active = false;
-                        break;
-                    case "focus":
-                        if (!eatNextEvent) {
-                            active = true;
-                        } else {
-                            active = true;
-                            minimized = false;
-                            eatNextEvent = false;
-                        }
-                        break;
+        const listener = (e: Event) => {
+            let index: number;
+            if ((index = ["deactivate", "activate"].indexOf(e.type)) !== -1) {
+                const listener = listenersMap.get("activeChange");
+                if (!nullOrUndefined(listener)) {
+                    listener!(Boolean(index));
                 }
+            } else if ((index = ["minimize", "restore"].indexOf(e.type)) !== -1) {
+                const listener = listenersMap.get("stateChange");
+                if (!nullOrUndefined(listener)) {
+                    listener!(Boolean(index));
+                }
+            }
+        };
 
-                const listener = listenersMap.get("stateChanged");
-                if (!eatNextEvent && !nullOrUndefined(listener)) {
-                    listener!({
-                        active,
-                        minimized
-                    });
-                }
-            },
-        });
+        window.addEventListener("minimize", listener);
+        window.addEventListener("restore", listener);
+        window.addEventListener("activate", listener);
+        window.addEventListener("deactivate", listener);
+                
         return () => {
-            console.warn("closing channel window-events");
-            subscribtion.unsubscribe();
+            window.removeEventListener("minimize", listener);
+            window.removeEventListener("restore", listener);
+            window.removeEventListener("activate", listener);
+            window.removeEventListener("deactivate", listener);
         }
     }, []);
 
@@ -113,4 +99,71 @@ export function useEventProvider(): EventProvider {
             console.error(`Not implemented off(type: ${type})`);
         }
     };
+}
+
+const minimize = new Event("minimize");
+const restore = new Event("restore");
+const focus = new Event("activate");
+const blur = new Event("deactivate");
+
+export function installWindowEventHook() {
+    let minimized = false;
+    let eatNextEvent = false;
+    console.info("establishChannel(window-events)");
+    establishChannel<WindowEvent>("window-events").subscribe({
+        next(event) {
+            switch (event) {
+                case "minimized":
+                    if (!minimized) {
+                        minimized = true;
+                        window.dispatchEvent(minimize);
+                    } else {
+                        eatNextEvent = true;
+                    }
+                    break;
+                case "blur":
+                    window.dispatchEvent(blur);
+                    break;
+                case "focus":
+                    if (!eatNextEvent) {
+                        window.dispatchEvent(focus);
+                    } else {
+                        minimized = false;
+                        eatNextEvent = false;
+                        window.dispatchEvent(restore);
+                    }
+                    break;
+            }
+        },
+    });
+}
+
+export type LocationContextType = "Auto" | "Generate" | "Retrieve";
+
+const LocationContext = createContext<LocationContextType>(null!);
+
+export function getLocationContext(): LocationContextType {
+    return useContext(LocationContext);
+}
+
+export const Resetable: FunctionComponent<{ children: VNode<any> }> = ({ children }) => {
+    const [key, setKey] = useState(makeId());
+    const [clc, setClc] = useState<LocationContextType>("Auto");
+
+    useEffect(() => {
+        establishChannel<LocationContextType>("ui-events")
+            .subscribe(location => {
+                setKey(makeId());
+                setClc(location);
+            });
+        Rust.setInitialized();
+    }, [])
+
+    return createElement(
+        LocationContext.Provider,
+        { 
+            value: clc,
+            children: cloneElement(children, { key })
+        }
+    );
 }

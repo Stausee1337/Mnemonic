@@ -3,6 +3,7 @@ export namespace Rust {
     export function fromMnemonicPhrase<S, T>(pharse: string[], config: S): Promise<T>;
     export function checkChecksum(pharse: string[]): Promise<boolean>;
     export function setInitialized(): Promise<void>;
+    export function pageContentLoaded(): Promise<void>;
     export function getWordlist(): Promise<string>;
     export function windowDragMove(): Promise<void>;
     export function windowShowSysMenu(x: number, y: number): Promise<void>;

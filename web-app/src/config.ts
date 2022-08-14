@@ -5,7 +5,7 @@ import { Rust } from "./interface";
 import { resolveTypes } from "./utils";
 
 export namespace Config {
-    type LazyProperty = {
+    export type LazyProperty = {
         getOrDefault<T>(value?: T): Promise<T>,
     } & { [key: string]: LazyProperty; };
 
@@ -19,6 +19,12 @@ export namespace Config {
     }
 
     const TARGET = Symbol('$$config.target');
+
+    export function setProperty<T>(property: LazyProperty, value: T) {
+        const target = (property as any)[TARGET];
+        const path = target['name'].split('.');
+        writeToConfig(path, value);
+    }
 
     // @ts-ignore: Type Error
     const lazyPropertyImpl: LazyProperty = {

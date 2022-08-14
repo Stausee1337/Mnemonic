@@ -264,7 +264,7 @@ export const TitleBar: FunctionComponent = () => {
         }
     }, [historyOpen])
 
-    eventProvider.on<{ active: boolean }>("stateChanged", ({ active }) => {
+    eventProvider.on<boolean>("activeChange", (active) => {
         setActive(active);
     })
 
@@ -408,6 +408,9 @@ export const ContainerItem: FunctionComponent<{
 
 export const ContainerBox: FunctionComponent<{ class?: string }> = ({ class: className, children }) => 
     <div class={`${styles['contanier-box']} ${className}`} children={children}/>
+
+export const ContainerRow: FunctionComponent = ({ children }) => 
+    <div class={styles['contanier-row']} children={children}/>
 
 export const ExpansionContainer: FunctionComponent<{
     heading: string,

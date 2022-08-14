@@ -1,23 +1,17 @@
 document.addEventListener('contextmenu', event => event.preventDefault());
 
-// console.log('init.js')
 const ipcHandler = (function () {
     let handlerId = 0;
     const handleRegister = new Map();
 
     function _dispatchResolver(handle, object) {
         const registerObject = handleRegister.get(handle);
-        // console.log(handle, object, registerObject);
         if (registerObject === undefined) {
             return;
         }
 
-        // console.log('executed');
-
         handleRegister.delete(registerObject.handles.callback);
         handleRegister.delete(registerObject.handles.error);
-
-        // console.log('executed');
 
         registerObject.resolver.call(undefined, object); // Invoke via call method to avoid injecting some kind of weird this refrence
     }
@@ -55,3 +49,11 @@ window.addEventListener('application-init', () => {
         ipcHandler
     });
 })
+
+function _triggerWindowClose() {
+    const closeEvent = new CustomEvent('close', { cancelable: true })
+    window.dispatchEvent(closeEvent);
+    if (!closeEvent.defaultPrevented) {
+        window.ipc.postMessage('{"callback":0,"error":0,"command":"application-close-window","inner":null}');
+    }
+}

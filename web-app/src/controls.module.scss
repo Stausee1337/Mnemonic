@@ -82,12 +82,19 @@ label.toggle {
 label.checkbox {
     display: inline-block;
     padding: 0 0 0 2.8rem;
-    margin: 0 0 1rem 0;
+    // margin: 0 0 1rem 0;
     position: relative;
     height: 2.2rem;
     line-height: 2.2rem;
     cursor: pointer;
     overflow: hidden;
+
+    &[disabled] {
+        cursor: default;
+        span {
+            opacity: 0.5;
+        }
+    }
 
     input {
         position: fixed;
@@ -106,6 +113,7 @@ label.checkbox {
         background-color: #f3f3f3;
         border: 1px solid $gray;
         overflow: hidden;
+        text-align: center;
 
         &::before {
             position: absolute;
@@ -545,6 +553,16 @@ div.expension-group {
             display: flex;
             justify-content: space-between;
         
+            &:not(:last-child) {
+                margin-bottom: 0.2rem;
+            }
+        }
+
+        div.contanier-row {
+            @extend .animatable;
+            padding: 1.2rem 2rem 1.2rem 4rem;
+            background-color: white;
+
             &:not(:last-child) {
                 margin-bottom: 0.2rem;
             }

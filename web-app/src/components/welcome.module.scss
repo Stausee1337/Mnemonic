@@ -9,19 +9,51 @@
 
     div.header {
         grid-area: header;
-        .caption {
-            font-weight: 400;
-            font-size: 4.2rem;
-        }
-    
-        .subtitle {
-            font-weight: 400;
-            font-size: 2.6rem;
-            color: rgba(0, 0, 0, 0.65);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+
+        div.heading {
+            .caption {
+                font-weight: 400;
+                font-size: 4.2rem;
+            }
+        
+            .subtitle {
+                font-weight: 400;
+                font-size: 2.6rem;
+                color: rgba(0, 0, 0, 0.65);
+            }
         }
 
-        h2 {
-            font-weight: 300;
+        div.cmd-links {
+            padding: 1rem 0;
+
+            $width: 2.15rem;
+            a.cmd-link {
+                color: $prime;
+                font-size: 1.6rem;
+                margin-bottom: 0.75rem;
+                padding-left: $width;
+                position: relative;
+                cursor: pointer;
+
+                icon {
+                    position: absolute;
+                    width: $width;
+                    top: 0;
+                    left: 0;
+                    bottom: 0;
+
+                    &::before {
+                        position: absolute;
+                        top: 50%;
+                        transform: translateY(-50%);
+                    }
+                }
+
+                &::after {content: "...";}
+            }
+
         }
     }
 

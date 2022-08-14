@@ -1,3 +1,5 @@
+// #![windows_subsystem = "windows"]
+
 mod ipc;
 mod config;
 mod events;
@@ -12,6 +14,7 @@ use std::io::prelude::*;
 use std::str::FromStr;
 use std::fs::File;
 
+use events::ApplicationOpenLocation;
 use tar::Archive;
 // use win32::DispatchExt;
 use wry::application::{
@@ -39,7 +42,6 @@ use crate::{
     commands::WindowButton,
     events::EventLoopMessage
 };
-
 
 struct ApplicationMessagePlugin(HWND);
 
@@ -76,6 +78,23 @@ fn check_start_with_launcher(
         return false;
     }
     &args[1].to_lowercase() == "--launcher"
+}
+
+fn check_aol_argument(
+    args: &Vec<String>
+) -> Option<usize> {
+    if args.len() <= 1 {
+        return None;
+    }
+    ["--generate", "--retrieve"].iter().position(|&s| s == args[1].to_lowercase().as_str())
+}
+
+fn get_applicaton_open_location(args: &Vec<String>) -> ApplicationOpenLocation {
+    match check_aol_argument(args) {
+        Some(0) => ApplicationOpenLocation::Generate,
+        Some(1) => ApplicationOpenLocation::Retrieve,
+        _ => ApplicationOpenLocation::Auto
+    }
 }
 
 fn create_window_config() -> WindowConfig {
@@ -184,33 +203,49 @@ fn show_window_borderless(
 }
 
 fn run(
+    args: Vec<String>,
     runtime: Wry<EventLoopMessage>,
     is_launcher: bool,
     (window, hwnd): (DetachedWindow<EventLoopMessage, Wry<EventLoopMessage>>, HWND)
 ) {
     let should_show_window = if is_launcher {
-        config::get_config_or_default("globalConfig.generalApp.showOnStart", Some(false)).unwrap()
+        config::get_config_or_default("generalApp.showOnStart", Some(false)).unwrap()
     } else { true };
+
+    let application_open_location = if should_show_window {
+        Some(get_applicaton_open_location(&args))
+    } else { None };
 
     let channels = Channels::new();
     let mut initialized = false;
     let mut force_close = false;
+    let mut show_with_delay = false;
     runtime.run(move |event| match event {
-        RunEvent::Exit => {
-            println!("Exit")
-        }
         RunEvent::UserEvent(tp) => {
             match tp {
                 EventLoopMessage::WebAppInit => {
                     if !initialized {
                         if should_show_window {
-                            show_window_borderless(&window, hwnd);
+                            let mut success = false;
+                            if let Some(channel) = channels.get_channel("ui-events") {
+                                if let Some(aol) = application_open_location.clone() {
+                                    channel.send_message(aol);
+                                    success = true;
+                                    show_with_delay = true;
+                                }
+                            }
+                            if !success {
+                                show_window_borderless(&window, hwnd);
+                            }
                         }
                         initialized = true;
                     }
                 }
-                EventLoopMessage::ShowSysMenu { x, y } => {
-                    let _ = win32::show_sys_menu(hwnd, x, y);
+                EventLoopMessage::PageContentLoaded => {
+                    if show_with_delay {
+                        show_with_delay = false;
+                        show_window_borderless(&window, hwnd);
+                    }
                 }
                 EventLoopMessage::EstablishChannel(req) => {
                     let _ = channels.open_channel(&req.0, window.clone(), req.1);
@@ -219,6 +254,9 @@ fn run(
                     if let Some(channel) = channels.get_channel_by_id(id) {
                         channel.send_close();                    
                     }
+                }
+                EventLoopMessage::WindowShowSysMenu { x, y } => {
+                    let _ = win32::show_sys_menu(hwnd, x, y);
                 }
                 EventLoopMessage::WindowSysCommand(msg) => {
                     let _ = match msg {
@@ -241,14 +279,27 @@ fn run(
                         channel.send_message("minimized");
                     }
                 }
-                EventLoopMessage::ApplicationOpenWindow => {
+                EventLoopMessage::ApplicationOpenWindow(aol) => {
                     if !window.dispatcher.is_visible().unwrap_or(true) {
-                        show_window_borderless(&window, hwnd);
+                        if let Some(channel) = channels.get_channel("ui-events") {
+                            channel.send_message(aol);
+                            show_with_delay = true;
+                        } else {
+                            show_window_borderless(&window, hwnd);
+                        }
                     } else {
                         let _ = window.dispatcher.set_focus();
                         let _ = window.dispatcher.request_user_attention(
                             Some(UserAttentionType::Informational)
                         );
+                    }
+                }
+                EventLoopMessage::ApplicationCloseWindow => {
+                    if is_launcher {
+                        let _ = window.dispatcher.hide();
+                    } else {
+                        force_close = true;
+                        let _ = window.dispatcher.close();
                     }
                 }
                 EventLoopMessage::ApplicationQuit => {
@@ -260,10 +311,10 @@ fn run(
         RunEvent::WindowEvent { event, .. } => {
             match event {
                 WindowEvent::CloseRequested { signal_tx } => {
-                    if is_launcher && !force_close {
+                    if !force_close {
                         let _ = signal_tx.send(true);
-                        let _ = window.dispatcher.hide();
                     }
+                    ipc::js_window_close_event(&window);
                 }
                 _ => ()
             }
@@ -283,18 +334,30 @@ fn start_pipe_server(
             |mut server_file| {
                 let mut buffer = [0; 1];
                 server_file.read(&mut buffer).unwrap();
+
+                let aol = match buffer[0] {
+                    0x42 => Some(ApplicationOpenLocation::Auto),
+                    0x44 => Some(ApplicationOpenLocation::Generate),
+                    0x46 => Some(ApplicationOpenLocation::Retrieve),
+                    _ => None
+                };
                 
-                if buffer[0] == 0x42 {
-                    let _ = proxy.send_event(EventLoopMessage::ApplicationOpenWindow);
+                if let Some(aol) = aol {
+                    let _ = proxy.send_event(EventLoopMessage::ApplicationOpenWindow(aol));
                 }
             }
         );
     });
 }
 
-fn notify_window_process() {
+fn notify_window_process(aol: ApplicationOpenLocation) {
+    let payload: u8 = match aol {
+        ApplicationOpenLocation::Auto => 0x42,
+        ApplicationOpenLocation::Generate => 0x44,
+        ApplicationOpenLocation::Retrieve => 0x46,
+    };
     let mut client_pipe_handle = win32::connect_to_pipe(PIPE_PATH.to_string());
-    client_pipe_handle.write(&[0x42u8]).unwrap();
+    client_pipe_handle.write(&[payload]).unwrap();
 }
 
 fn init_system_tray(runtime: &mut Wry<EventLoopMessage>) {
@@ -322,11 +385,11 @@ fn create_system_tray_handler(
 ) -> Box<dyn Fn(&SystemTrayEvent) + Send + 'static> {
     Box::new(move |event| match event {
         SystemTrayEvent::LeftClick { .. } => {
-            let _ = proxy.send_event(EventLoopMessage::ApplicationOpenWindow);
+            let _ = proxy.send_event(EventLoopMessage::ApplicationOpenWindow(ApplicationOpenLocation::Auto));
         }
         SystemTrayEvent::MenuItemClick(e) => {
             let _ = if e == &open {
-                proxy.send_event(EventLoopMessage::ApplicationOpenWindow)
+                proxy.send_event(EventLoopMessage::ApplicationOpenWindow(ApplicationOpenLocation::Auto))
             } else if e == &quit {
                 proxy.send_event(EventLoopMessage::ApplicationQuit)
             } else { Ok(()) };
@@ -350,7 +413,7 @@ fn main() {
         .expect("Couldn't build wry runtime");
 
     if mutex.is_none() { // App already open
-        notify_window_process();
+        notify_window_process(get_applicaton_open_location(&args));
         return;
     }
 
@@ -359,12 +422,13 @@ fn main() {
     let use_launcher = check_start_with_launcher(&args);
     
     if use_launcher {
-        install_plugin(&mut runtime, &window_tpl);
         init_system_tray(&mut runtime);
     }
+    install_plugin(&mut runtime, &window_tpl);
     start_pipe_server(runtime.create_proxy());
 
     run(
+        args,
         runtime,
         use_launcher,
         window_tpl

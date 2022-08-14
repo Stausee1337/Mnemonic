@@ -21,7 +21,7 @@ type Uuid = [
     number, number, number, number]
 ];
 interface ChannelAcceptEvent { token: number, acceptId: Uuid }
-interface ChannelMessageEvent { channelId: Uuid, data?: Record<string, any>, error?: Record<string, any> }
+interface ChannelMessageEvent { channelId: Uuid, data: Record<string, any>, resolver?: number }
 
 type Handle = number;
 type Handles = { callback: Handle, error: Handle }
@@ -44,7 +44,9 @@ export interface IRustInterface {
         once?: boolean
     ): () => void;
 
+    ready: Promise<void>;
     _ready: boolean;
+    _resolve: () => void;
     _update(changes: IRustInterface): void;
 }
 
@@ -56,23 +58,23 @@ export const rustInterface: IRustInterface = <IRustInterface>{
         })
         rustInterface._ready = true;
     },
-    onChannelEvent(type, listener, once) {
+    onChannelEvent(ctype, listener, once) {
         once = once ?? false;
         let channel = <Observable<{
             type: "accept" | "message",
             [key:string]: any
         }>>(<any>window)['channel'];
-        channel = channel.pipe(
-            filter(p => p.type === type), 
-            map(p => {
-                delete p.type;
-                return p;
-            })
-        );
         
-        return channel.subscribe({ next: (listener as any) }).unsubscribe.bind(channel)
+        return channel.subscribe(data => {
+            const {type, ...event} = data;
+            if (type === ctype) {
+                listener(event as any);
+            }
+        }).unsubscribe.bind(channel)
     }
 };
+
+rustInterface.ready = new Promise<void>(resolve => rustInterface._resolve = resolve)
 
 function randomId(): number {
     return window.crypto.getRandomValues(new Uint32Array(1))[0];
@@ -116,19 +118,16 @@ export function establishChannel<T>(name: string): Observable<T> {
 
         const setInitialzed = (channelId: Uuid) => {
             storedChannelId = channelId;
-            let teardown = rustInterface.onChannelEvent("message", event => {
+            rustInterface.onChannelEvent("message", event => {
                 if (dequal(event.channelId, channelId)) {
-                    if (nullOrUndefined(event.error)) {
-                        subscriber.next((event.data ?? null) as T);
-                    } else if (nullOrUndefined(event.data)) {
-                        subscriber.error((event.error ?? null) as any);
+                    const result = subscriber.next(event.data as T);
+                    if (!nullOrUndefined(event.resolver)) {
+                        callRustCommand("resolve", [event.resolver!, true]);
                     }
                 }
             });
-            let teardown2 = rustInterface.onChannelEvent("close", ({channelId: eventChannelId}) => {
+            rustInterface.onChannelEvent("close", ({channelId: eventChannelId}) => {
                 if (dequal(eventChannelId, channelId)) {
-                    teardown();
-                    teardown2();
                     subscriber.complete();
                 }
             })
@@ -136,11 +135,9 @@ export function establishChannel<T>(name: string): Observable<T> {
         };
 
         rustOpenChannel(name).then(async id => {
-            const teardown = rustInterface.onChannelEvent("accept", event => {
-                console.log(event);
+            rustInterface.onChannelEvent("accept", event => {
                 const {token, acceptId} = event;
                 if (token === id) {
-                    teardown();
                     setInitialzed(acceptId);
                 }
             })
@@ -230,5 +227,5 @@ export function initializeApi() {
     (<any>window)['RustInterface'] = rustInterface;
     window.dispatchEvent(event);
     rustInterface._ready = true;
-    console.log(rustInterface);
+    rustInterface._resolve();
 }

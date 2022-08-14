@@ -17,6 +17,7 @@ import {
 } from "./generate"
 import { useNotifier } from "../notification";
 import { Config } from "../config";
+import { useEventProvider } from "../window";
 
 function storeWordlist(wordlist: string[]) {
     (window as any)['wordlist'] = wordlist;
@@ -237,7 +238,6 @@ const IntelligentWordInput: FunctionComponent<{
                 e.preventDefault();
                 if (input?.value.trim() !== "") {
                     const word = words.splice(slicingIndex, 1, input!.value.toLowerCase())[0] ?? "";
-                    console.log(words);
                     setWords([...words])
                     setIndex(slicingIndex+1);
                     input!.value = word;
@@ -287,7 +287,6 @@ const IntelligentWordInput: FunctionComponent<{
                     e.preventDefault();
                     const currentInputLength = input!.value.length;
                     const newWord = words.splice(slicingIndex-1, 1)!;
-                    console.log(newWord);
                     input!.value = newWord + input!.value;
                     input!.selectionStart = input.value.length - currentInputLength;
                     input!.selectionEnd = input.value.length - currentInputLength;
@@ -426,7 +425,7 @@ const IntelligentWordInput: FunctionComponent<{
     );
 }
 
-const PasswordSettings: FunctionComponent<{
+export const PasswordSettings: FunctionComponent<{
     data: PasswordForm,
     onChange: (data: PasswordForm) => void
 }> = ({ data, onChange }) => {
@@ -484,7 +483,6 @@ const InputForm: FunctionComponent<{
             setDisabled(!event.valid!);
             setLoading(true);
             Rust.checkChecksum(event.phrase!).then(response => {
-                console.log("hallo welt", response);
                 if (!response) {
                     setButtonText("Clear");
                     setLoading(false);
@@ -531,7 +529,6 @@ const InputForm: FunctionComponent<{
     );
 }
 
-
 const PasswordDisplay: FunctionComponent<{
     phrase: string[],
     config: PasswordForm
@@ -540,8 +537,19 @@ const PasswordDisplay: FunctionComponent<{
     const [config, setConfig] = useState<PasswordForm>(initialConfig);
     const changesSaved = useRef(false);
     const autoCopy = useRef(true);
+    const eventProvider = useEventProvider();
 
     const notfiy = useNotifier();
+
+    const windowEventListener = async (active: boolean) => {
+        const closeOnBlur = await Config.globalConfig.restorePage.closeOnBlur.getOrDefault(true);
+        if (!active && changesSaved.current && closeOnBlur) {
+            Rust.windowClose();
+        } 
+    }
+
+    eventProvider.on<boolean>("activeChange", windowEventListener);
+    eventProvider.on<boolean>("stateChange", windowEventListener);
 
     useEffect(() => {
         const listener = () => {
