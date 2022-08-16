@@ -310,4 +310,21 @@ pub fn autostart_registry_execute_command(invoke: Invoke) -> Option<()> {
     resolver.resolve(result);
     
     Some(())
-} 
+}
+
+pub fn clipboard_write_text_secure(invoke: Invoke) -> Option<()> {
+    let arguments = deserialize_arguments(invoke.clone())?;
+    let mut iter = arguments.iter();
+    let resolver = invoke.resolver.clone();
+
+    let result = win32::clipboard_write_text_secure(
+        get_argument(iter.next()?, resolver.clone())?
+    );
+
+    match result {
+        Ok(ok) => resolver.resolve(ok),
+        Err(err) => resolver.reject(err.to_string())
+    }
+    
+    Some(())
+}

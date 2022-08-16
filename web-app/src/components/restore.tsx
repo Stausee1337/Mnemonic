@@ -544,15 +544,16 @@ const PasswordDisplay: FunctionComponent<{
         const closeOnBlur = await Config.globalConfig.restorePage.closeOnBlur.getOrDefault(true);
         if (!active && changesSaved.current && closeOnBlur) {
             Rust.windowClose();
-        } 
+        }
     }
 
     eventProvider.on<boolean>("activeChange", windowEventListener);
     eventProvider.on<boolean>("stateChange", windowEventListener);
 
     useEffect(() => {
-        const listener = () => {
-            changesSaved.current = true;
+        const listener = (e: ClipboardEvent) => {
+            e.preventDefault();
+            copyPassword(password);
         }
         document.addEventListener('copy', listener);
         return () => {
@@ -569,10 +570,10 @@ const PasswordDisplay: FunctionComponent<{
         setTimeout(() => {
             close();
         }, 3000)
-        navigator.clipboard.writeText(password);
-        changesSaved.current = true;
+        Rust.clipboardWriteTextSecure(password)
+            .then(ok => { changesSaved.current = ok; console.log('executed', ok) })
+            .catch(console.error); // todo: call global error handler        
     }
-
     useEffect(() => {
         Rust.fromMnemonicPhrase<PasswordForm, PhraseData>(phrase, config).then(data => {
             setPassword(data.password);

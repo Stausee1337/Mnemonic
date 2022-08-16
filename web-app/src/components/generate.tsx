@@ -333,7 +333,8 @@ export const GeneratePage: FunctionComponent = () => {
         setTimeout(() => {
             close();
         }, 3000)
-        navigator.clipboard.writeText(password);
+        Rust.clipboardWriteTextSecure(password).catch(console.error);
+        // todo: call global error handler
     }
 
     return (

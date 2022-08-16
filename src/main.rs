@@ -101,7 +101,7 @@ fn create_window_config() -> WindowConfig {
         label: "1".to_string(),
         url: WindowUrl::External(Url::from_str("http://localhost:3000").unwrap()),
         file_drop_enabled: false,
-        center: false,
+        center: true,
         width: 800f64,
         height: 630f64,
         resizable: false,

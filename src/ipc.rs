@@ -314,6 +314,9 @@ fn invoke_handler(window: Window, proxy: EventProxy<EventLoopMessage>, invoke: I
         "autostartRegistryExecuteCommand" => {
             commands::autostart_registry_execute_command(invoke);
         }
+        "clipboardWriteTextSecure" => {
+            commands::clipboard_write_text_secure(invoke);
+        }
         "configIsFile" => {
             config::js_promise_is_file(invoke);
         }

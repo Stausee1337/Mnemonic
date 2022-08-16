@@ -1,4 +1,11 @@
 document.addEventListener('contextmenu', event => event.preventDefault());
+window.addEventListener('keydown', ev => {
+    if (ev.key === 'F5') {
+        ev.preventDefault();
+    } else if (ev.key.toLowerCase() === 'r' && ev.ctrlKey) {
+        ev.preventDefault();
+    }
+})
 
 const ipcHandler = (function () {
     let handlerId = 0;
