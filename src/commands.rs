@@ -322,7 +322,7 @@ pub fn clipboard_write_text_secure(invoke: Invoke) -> Option<()> {
     );
 
     match result {
-        Ok(ok) => resolver.resolve(ok),
+        Ok(..) => resolver.resolve(Value::Null),
         Err(err) => resolver.reject(err.to_string())
     }
     

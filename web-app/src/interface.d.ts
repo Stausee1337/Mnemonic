@@ -12,7 +12,7 @@ export namespace Rust {
     export function windowSetTitle(title: string): Promise<void>;
     export function showMessageBox(config: { [ key: string ]: any }): Promise<any>;
     export function autostartRegistryExecuteCommand(command: string): Promise<boolean | null>;
-    export function clipboardWriteTextSecure(newClipText: string): Promise<bool>;
+    export function clipboardWriteTextSecure(newClipText: string): Promise<void>;
     export function configGetProperty(path: string[]): Promise<any>;
     export function configSetProperty(path: string[], value: any): Promise<void>;
     export function configObserveProperty(path: string[]): Promise<void>;

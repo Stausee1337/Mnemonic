@@ -16,7 +16,7 @@ use windows::{
             WindowsAndMessaging::*,
             Controls::MARGINS,
             Shell::{SetWindowSubclass, DefSubclassProc}, 
-            Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, KEYBDINPUT, INPUT_KEYBOARD, VK_CONTROL, VIRTUAL_KEY, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP}
+            Input::KeyboardAndMouse::{KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, keybd_event}
         }, 
         Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea}, Storage::FileSystem::{PIPE_ACCESS_DUPLEX, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_FLAGS_AND_ATTRIBUTES, CreateFileA, OPEN_EXISTING, FILE_ACCESS_FLAGS, FILE_SHARE_MODE}, Security::SECURITY_ATTRIBUTES,
     }, ApplicationModel::DataTransfer::{Clipboard, DataPackage, ClipboardContentOptions},
@@ -332,7 +332,7 @@ pub fn autostart_registry_execute_command(command: AutostartCommand) -> Option<b
     None
 }
 
-pub fn clipboard_write_text_secure(clip_text: String) -> Result<bool, windows::core::Error> {
+pub fn clipboard_write_text_secure(clip_text: String) -> Result<(), windows::core::Error> {
     let content = DataPackage::new()?;
     content.SetText(clip_text)?;
 
@@ -342,35 +342,14 @@ pub fn clipboard_write_text_secure(clip_text: String) -> Result<bool, windows::c
     
     Clipboard::SetContentWithOptions(content, options)?;
 
-    let mut ki = KEYBDINPUT::default();
-    ki.wScan = 0;
-    ki.time = 0;
-    ki.dwExtraInfo = 0;
-
-    let mut input = INPUT::default();
-    input.r#type = INPUT_KEYBOARD;
-    input.Anonymous = INPUT_0 { ki };
-
     // simulate Ctrl+V to burn the contents to the clipboard
     unsafe {
-        let mut result: [u32; 4] = [0, 0, 0, 0];
+        // let mut result: [u32; 4] = [0, 0, 0, 0];
 
-        ki.wVk = VK_CONTROL;
-        ki.dwFlags = KEYBD_EVENT_FLAGS(0);
-        result[0] = SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
-
-        ki.wVk = VIRTUAL_KEY(0x56);
-        ki.dwFlags = KEYBD_EVENT_FLAGS(0);
-        result[1] = SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
-
-        ki.wVk = VIRTUAL_KEY(0x56);
-        ki.dwFlags = KEYEVENTF_KEYUP;
-        result[2] = SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
-
-        ki.wVk = VK_CONTROL;
-        ki.dwFlags = KEYEVENTF_KEYUP;
-        result[3] = SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
-
-        return Ok(!result.iter().any(|&f| f == 0));
+        keybd_event(162, 29, KEYBD_EVENT_FLAGS(0), 0);
+        keybd_event(86, 47, KEYBD_EVENT_FLAGS(0), 0);
+        keybd_event(86, 47, KEYEVENTF_KEYUP, 0);
+        keybd_event(162, 29, KEYEVENTF_KEYUP, 0);
     }
+    Ok(())
 }

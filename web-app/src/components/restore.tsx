@@ -571,7 +571,7 @@ const PasswordDisplay: FunctionComponent<{
             close();
         }, 3000)
         Rust.clipboardWriteTextSecure(password)
-            .then(ok => { changesSaved.current = ok; console.log('executed', ok) })
+            .then(() => { changesSaved.current = true; })
             .catch(console.error); // todo: call global error handler        
     }
     useEffect(() => {
