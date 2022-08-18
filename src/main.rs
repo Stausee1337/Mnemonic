@@ -36,6 +36,7 @@ use tauri_utils::{config::{WindowUrl, WindowConfig,}, Theme};
 use windows::Win32::Foundation::HWND;
 use url::Url;
 
+use crate::win32::JumpTask;
 use crate::{
     ipc::Channels,
     commands::WindowButton,
@@ -214,6 +215,28 @@ fn run(
     let application_open_location = if should_show_window {
         Some(get_applicaton_open_location(&args))
     } else { None };
+
+    let current_path = std::env::current_exe().unwrap();
+    let current_path = current_path.as_os_str().to_str().unwrap();
+
+    println!("{:?}", win32::set_jump_list(vec![
+        JumpTask {
+            title: "Generate",
+            description: "Jump to Generate Page",
+            arguments: "--generate",
+            icon_path: current_path,
+            icon_index: 1,
+            program: current_path,
+        },
+        JumpTask {
+            title: "Retrieve",
+            description: "Jump to Retrieve Page",
+            arguments: "--retrieve",
+            icon_path: current_path,
+            icon_index: 1,
+            program: current_path,
+        }
+    ]));
 
     let channels = Channels::new();
     let mut initialized = false;

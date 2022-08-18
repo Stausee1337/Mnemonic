@@ -50,6 +50,8 @@ fn main() {
 
     let mut res =  winres::WindowsResource::new();
     res.set_icon("icons/Icon.ico");
+    res.set_icon_with_id("icons/generate.ico", "2");
+    res.set_icon_with_id("icons/retrieve.ico", "3");
     res.compile().unwrap();
 
     embed_manifest(new_manifest("Stausee.Mnemonic")).unwrap();

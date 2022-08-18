@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use tauri_runtime::{EventLoopProxy};
 use tauri_runtime_wry::EventProxy;
 use windows::{
-    core::{PCWSTR, Error},
+    core::{PCWSTR, Error, Interface},
     Win32::{
         Foundation::{HWND, LPARAM, WPARAM, LRESULT, HANDLE, ERROR_FILE_NOT_FOUND, ERROR_SUCCESS},
         System::{
@@ -10,15 +10,15 @@ use windows::{
             LibraryLoader::*, 
             Threading::{OpenMutexW, CreateMutexW, ReleaseMutex}, 
             Pipes::{CreateNamedPipeW, PIPE_TYPE_BYTE, PIPE_WAIT, PIPE_READMODE_BYTE, ConnectNamedPipe}, 
-            SystemServices::{WRITE_DAC, GENERIC_READ, GENERIC_WRITE} 
+            SystemServices::{WRITE_DAC, GENERIC_READ, GENERIC_WRITE}, Com::{CoCreateInstance, CLSCTX_INPROC_SERVER} 
         },
         UI::{
             WindowsAndMessaging::*,
             Controls::MARGINS,
-            Shell::{SetWindowSubclass, DefSubclassProc}, 
+            Shell::{SetWindowSubclass, DefSubclassProc, ICustomDestinationList, IShellLinkW, Common::{IObjectCollection, IObjectArray}, DestinationList, EnumerableObjectCollection, ShellLink, PropertiesSystem::{IPropertyStore, InitPropVariantFromStringVector}}, 
             Input::KeyboardAndMouse::{KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, keybd_event}
         }, 
-        Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea}, Storage::FileSystem::{PIPE_ACCESS_DUPLEX, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_FLAGS_AND_ATTRIBUTES, CreateFileA, OPEN_EXISTING, FILE_ACCESS_FLAGS, FILE_SHARE_MODE}, Security::SECURITY_ATTRIBUTES,
+        Graphics::{Gdi::SetWindowRgn, Dwm::DwmExtendFrameIntoClientArea}, Storage::{FileSystem::{PIPE_ACCESS_DUPLEX, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, FILE_FLAGS_AND_ATTRIBUTES, CreateFileA, OPEN_EXISTING, FILE_ACCESS_FLAGS, FILE_SHARE_MODE}, EnhancedStorage::PKEY_Title}, Security::SECURITY_ATTRIBUTES,
     }, ApplicationModel::DataTransfer::{Clipboard, DataPackage, ClipboardContentOptions},
 };
 
@@ -351,5 +351,69 @@ pub fn clipboard_write_text_secure(clip_text: String) -> Result<(), windows::cor
         keybd_event(86, 47, KEYEVENTF_KEYUP, 0);
         keybd_event(162, 29, KEYEVENTF_KEYUP, 0);
     }
+    Ok(())
+}
+
+pub struct JumpTask<'a> {
+    pub title: &'a str,
+    pub description: &'a str,
+    pub arguments: &'a str,
+    pub icon_path: &'a str,
+    pub icon_index: i32,
+    pub program: &'a str,
+}
+
+pub fn set_jump_list<'a>(tasks: Vec<JumpTask<'a>>) -> Result<(), windows::core::Error> {
+    println!("ICustomDestinationList::Create");
+    let cdl: ICustomDestinationList = unsafe {
+        CoCreateInstance(&DestinationList, None, CLSCTX_INPROC_SERVER)?
+    };
+
+    println!("IObjectCollection::Create");
+    let collection: IObjectCollection = unsafe {
+        CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?
+    };
+
+    unsafe {
+        for task in tasks {
+            let shell_link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
+
+            println!("IShellLinkW.SetDescription");
+            shell_link.SetDescription(task.description)?;
+            println!("IShellLinkW.SetArguments");
+            shell_link.SetArguments(task.arguments)?;
+            println!("IShellLinkW.SetIconLocation");
+            shell_link.SetIconLocation(task.icon_path, task.icon_index)?;
+            println!("IShellLinkW.SetPath");
+            shell_link.SetPath(task.program)?;
+
+            let prop_store: IPropertyStore = shell_link.cast()?;
+            let pkey = PKEY_Title;
+
+            let mut title: Vec<u16> = task.title.encode_utf16().collect();
+            title.push(0x00);
+            let pv = InitPropVariantFromStringVector(&[windows::core::PWSTR(title.as_mut_ptr())])?;
+
+            println!("IPropertyStore.SetValue");
+            prop_store.SetValue(&pkey, &pv)?;
+            println!("IPropertyStore.Commit");
+            prop_store.Commit()?;
+
+            println!("IObjectCollection.AddObject");
+            collection.AddObject(shell_link)?;
+        }
+        
+        println!("ICustomDestinationList.BeginList");
+        let mut slots_visible: u32 = 0;
+        let _removed: IObjectArray = cdl.BeginList(&mut slots_visible as *mut u32)?;
+
+        println!("slots_visible, {}", slots_visible);
+        
+        println!("ICustomDestinationList.AddUserTasks");
+        cdl.AddUserTasks(collection)?;
+
+        cdl.CommitList()?;
+    }
+
     Ok(())
 }

@@ -77,7 +77,7 @@ cargo build --release
 ```
 
 ## Why only Windows?
-As a single developer a build most of the Software just for the plaftform I am working the most with because of time issues. If somebody is intrested in porting it to another plaftform: contribution is always welcome.
+As a single developer I build most of the Software just for the plaftform I am working the most with because of time constraints. If somebody is intrested in porting it to another plaftform: contribution is always welcome.
 
 ## Wordlist
 The wordlist is from electrum at [electrum/electrum/wordlist/english.txt](https://github.com/spesmilo/electrum/blob/master/electrum/wordlist/english.txt).
