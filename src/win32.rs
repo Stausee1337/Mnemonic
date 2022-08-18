@@ -364,12 +364,10 @@ pub struct JumpTask<'a> {
 }
 
 pub fn set_jump_list<'a>(tasks: Vec<JumpTask<'a>>) -> Result<(), windows::core::Error> {
-    println!("ICustomDestinationList::Create");
     let cdl: ICustomDestinationList = unsafe {
         CoCreateInstance(&DestinationList, None, CLSCTX_INPROC_SERVER)?
     };
 
-    println!("IObjectCollection::Create");
     let collection: IObjectCollection = unsafe {
         CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?
     };
@@ -378,13 +376,9 @@ pub fn set_jump_list<'a>(tasks: Vec<JumpTask<'a>>) -> Result<(), windows::core::
         for task in tasks {
             let shell_link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
 
-            println!("IShellLinkW.SetDescription");
             shell_link.SetDescription(task.description)?;
-            println!("IShellLinkW.SetArguments");
             shell_link.SetArguments(task.arguments)?;
-            println!("IShellLinkW.SetIconLocation");
             shell_link.SetIconLocation(task.icon_path, task.icon_index)?;
-            println!("IShellLinkW.SetPath");
             shell_link.SetPath(task.program)?;
 
             let prop_store: IPropertyStore = shell_link.cast()?;
@@ -394,24 +388,16 @@ pub fn set_jump_list<'a>(tasks: Vec<JumpTask<'a>>) -> Result<(), windows::core::
             title.push(0x00);
             let pv = InitPropVariantFromStringVector(&[windows::core::PWSTR(title.as_mut_ptr())])?;
 
-            println!("IPropertyStore.SetValue");
             prop_store.SetValue(&pkey, &pv)?;
-            println!("IPropertyStore.Commit");
             prop_store.Commit()?;
 
-            println!("IObjectCollection.AddObject");
             collection.AddObject(shell_link)?;
         }
         
-        println!("ICustomDestinationList.BeginList");
         let mut slots_visible: u32 = 0;
         let _removed: IObjectArray = cdl.BeginList(&mut slots_visible as *mut u32)?;
 
-        println!("slots_visible, {}", slots_visible);
-        
-        println!("ICustomDestinationList.AddUserTasks");
         cdl.AddUserTasks(collection)?;
-
         cdl.CommitList()?;
     }
 

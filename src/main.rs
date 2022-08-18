@@ -221,7 +221,7 @@ fn run(
 
     println!("{:?}", win32::set_jump_list(vec![
         JumpTask {
-            title: "Generate",
+            title: "Generate new Phrase",
             description: "Jump to Generate Page",
             arguments: "--generate",
             icon_path: current_path,
@@ -229,11 +229,11 @@ fn run(
             program: current_path,
         },
         JumpTask {
-            title: "Retrieve",
+            title: "Retrieve Password",
             description: "Jump to Retrieve Page",
             arguments: "--retrieve",
             icon_path: current_path,
-            icon_index: 1,
+            icon_index: 2,
             program: current_path,
         }
     ]));
