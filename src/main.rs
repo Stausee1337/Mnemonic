@@ -218,8 +218,8 @@ fn run(
 
     let current_path = std::env::current_exe().unwrap();
     let current_path = current_path.as_os_str().to_str().unwrap();
-
-    println!("{:?}", win32::set_jump_list(vec![
+    
+    let _ = win32::set_jump_list(vec![
         JumpTask {
             title: "Generate new Phrase",
             description: "Jump to Generate Page",
@@ -236,7 +236,7 @@ fn run(
             icon_index: 2,
             program: current_path,
         }
-    ]));
+    ]);
 
     let channels = Channels::new();
     let mut initialized = false;
