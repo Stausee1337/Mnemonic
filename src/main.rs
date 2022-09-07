@@ -3,7 +3,6 @@
 mod ipc;
 mod config;
 mod events;
-mod settings;
 mod commands;
 mod mnemonic;
 mod win32;
